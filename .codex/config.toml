@@ -1,0 +1,18 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+
+[mcp_servers.serena]
+command = "uvx"
+args = [
+  "--from",
+  "git+https://github.com/oraios/serena",
+  "serena",
+  "start-mcp-server",
+  "--context",
+  "codex",
+  "--project-from-cwd",
+  "--open-web-dashboard",
+  "false",
+]
