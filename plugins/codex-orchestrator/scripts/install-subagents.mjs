@@ -14,7 +14,7 @@ import { parseArgs } from "node:util";
  */
 
 const USAGE = `Usage:
-  node plugins/codex-orchestrator/scripts/install-subagents.mjs --model <model> [--target-dir <dir>] [--dry-run]
+  node install-subagents.mjs --model <model> [--target-dir <dir>] [--dry-run]
 
 Options:
   --model, -m <model>  Model name to write into each subagent definition.
