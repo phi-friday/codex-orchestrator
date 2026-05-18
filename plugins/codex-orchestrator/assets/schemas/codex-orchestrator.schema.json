@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/phi-friday/codex-orchestrator/schemas/codex-orchestrator.schema.json",
+  "title": "Codex Orchestrator Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["agents"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "type": ["string", "null"]
+          },
+          "model_reasoning_effort": {
+            "enum": ["low", "medium", "high", "xhigh", null]
+          }
+        }
+      }
+    }
+  }
+}

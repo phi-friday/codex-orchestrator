@@ -33,6 +33,13 @@ type ExecFileError = Error & {
 const execFileAsync = promisify(execFile);
 const NODE_EXECUTABLE = Bun.which("node") ?? "node";
 const SCRIPT_PATH = resolve(import.meta.dirname, "install-subagents.mjs");
+const SCHEMA_PATH = resolve(
+  import.meta.dirname,
+  "..",
+  "assets",
+  "schemas",
+  "codex-orchestrator.schema.json"
+);
 
 async function runInstaller(args: string[], cwd: string, home: string): Promise<RunResult> {
   try {
@@ -147,7 +154,7 @@ test("merges config agents and validates model and reasoning effort values", asy
       agents: {
         "orchestrator-explorer": {
           model: "gpt-5.4",
-          model_reasoning_effort: "medium",
+          model_reasoning_effort: "low",
         },
         fixer: {
           model: "gpt-5.4",
@@ -155,7 +162,7 @@ test("merges config agents and validates model and reasoning effort values", asy
         },
         oracle: {
           model: "gpt-5.5",
-          model_reasoning_effort: "medium",
+          model_reasoning_effort: "xhigh",
         },
         observer: {
           model: "gpt-5.4-mini",
@@ -167,9 +174,6 @@ test("merges config agents and validates model and reasoning effort values", asy
         "orchestrator-explorer": {},
         oracle: {
           model_reasoning_effort: "high",
-        },
-        observer: {
-          model_reasoning_effort: " ",
         },
       },
     });
@@ -195,7 +199,6 @@ test("merges config agents and validates model and reasoning effort values", asy
         },
       },
     });
-
     const merged_agents = await mergeConfigAgents([
       { kind: "global", path: global_config },
       { kind: "repository", path: repository_config },
@@ -205,7 +208,7 @@ test("merges config agents and validates model and reasoning effort values", asy
     expect(merged_agents).toEqual({
       "orchestrator-explorer": {
         model: "gpt-5.4",
-        model_reasoning_effort: "medium",
+        model_reasoning_effort: "low",
       },
       fixer: {
         model: null,
@@ -217,7 +220,6 @@ test("merges config agents and validates model and reasoning effort values", asy
       },
       observer: {
         model: "gpt-5.4-mini",
-        model_reasoning_effort: " ",
       },
     });
 
@@ -228,6 +230,40 @@ test("merges config agents and validates model and reasoning effort values", asy
     await expectRejectsMessage(
       mergeConfigAgents([{ kind: "global", path: invalid_reasoning_effort_config }]),
       /Agent model_reasoning_effort must be a string or null/u
+    );
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("rejects unknown reasoning effort strings", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-unit-reasoning-effort-");
+  const unknown_reasoning_effort_config = join(fixture.cwd, "unknown-reasoning-effort.json");
+  const blank_reasoning_effort_config = join(fixture.cwd, "blank-reasoning-effort.json");
+
+  try {
+    await writeJson(unknown_reasoning_effort_config, {
+      agents: {
+        broken: {
+          model_reasoning_effort: "extreme",
+        },
+      },
+    });
+    await writeJson(blank_reasoning_effort_config, {
+      agents: {
+        broken: {
+          model_reasoning_effort: " ",
+        },
+      },
+    });
+
+    await expectRejectsMessage(
+      mergeConfigAgents([{ kind: "global", path: unknown_reasoning_effort_config }]),
+      /Agent model_reasoning_effort must be one of low, medium, high, xhigh, or null/u
+    );
+    await expectRejectsMessage(
+      mergeConfigAgents([{ kind: "global", path: blank_reasoning_effort_config }]),
+      /Agent model_reasoning_effort must be one of low, medium, high, xhigh, or null/u
     );
   } finally {
     await fixture.cleanup();
@@ -247,6 +283,26 @@ test("resolves target directories from explicit, repository, and global sources"
   expect(resolveTargetDir(undefined, [{ kind: "global", path: "/tmp/global.json" }])).toEndWith(
     "/.codex/agents"
   );
+});
+
+test("publishes configuration schema with reasoning effort enum values", async (): Promise<void> => {
+  const schema = JSON.parse(await readFile(SCHEMA_PATH, "utf8")) as {
+    properties?: {
+      agents?: {
+        additionalProperties?: {
+          properties?: {
+            model_reasoning_effort?: {
+              enum?: unknown[];
+            };
+          };
+        };
+      };
+    };
+  };
+  const effort_schema =
+    schema.properties?.agents?.additionalProperties?.properties?.model_reasoning_effort;
+
+  expect(effort_schema?.enum).toEqual(["low", "medium", "high", "xhigh", null]);
 });
 
 test("reads template names and renders model and optional reasoning effort fields", async (): Promise<void> => {
@@ -283,7 +339,9 @@ test("reads template names and renders model and optional reasoning effort field
         model: "gpt-5.4",
         model_reasoning_effort: " ",
       })
-    ).toBe('name = "fixer"\nmodel = "gpt-5.4"\ndeveloper_instructions = ""\n');
+    ).toBe(
+      'name = "fixer"\nmodel = "gpt-5.4"\nmodel_reasoning_effort = " "\ndeveloper_instructions = ""\n'
+    );
   } finally {
     await fixture.cleanup();
   }

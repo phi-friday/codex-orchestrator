@@ -35,9 +35,9 @@ The bundled roles are:
 - `oracle`
 
 The installer writes `model_reasoning_effort` only when the final per-agent
-configuration contains a non-empty string value. Missing, null, or blank
-reasoning effort omits the TOML field and leaves Codex's default behavior in
-control. The `librarian` template also includes a Context7 MCP server
+configuration contains one of `low`, `medium`, `high`, or `xhigh`. Missing or
+null reasoning effort omits the TOML field and leaves Codex's default behavior
+in control. The `librarian` template also includes a Context7 MCP server
 configuration.
 
 The bundled templates are quality-preserving Codex adaptations of their
@@ -63,6 +63,7 @@ Use this shape:
 
 ```json
 {
+  "$schema": "./plugins/codex-orchestrator/assets/schemas/codex-orchestrator.schema.json",
   "agents": {
     "orchestrator-explorer": {
       "model": "gpt-5.4-mini",
@@ -83,7 +84,8 @@ Higher-priority config files override individual per-agent fields from lower
 priority files. Set `model` to `null` to disable an inherited bundled agent.
 Set `model_reasoning_effort` to `null` to remove an inherited reasoning effort
 override while keeping the agent enabled when its final `model` is a non-empty
-string.
+string. Accepted reasoning effort values are `low`, `medium`, `high`, and
+`xhigh`; other strings, including blank strings, are rejected.
 Unknown agent names are ignored with a warning.
 
 ## Command

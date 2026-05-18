@@ -42,6 +42,8 @@ Options:
 
 const MODEL_TEMPLATE_TOKEN = "{{MODEL}}";
 const MODEL_REASONING_EFFORT_LINE_TOKEN = "{{MODEL_REASONING_EFFORT_LINE}}";
+const MODEL_REASONING_EFFORT_VALUES = ["low", "medium", "high", "xhigh"];
+const MODEL_REASONING_EFFORT_VALUE_SET = new Set(MODEL_REASONING_EFFORT_VALUES);
 // oxlint-disable-next-line unicorn/prefer-import-meta-properties
 const MODULE_PATH = fileURLToPath(import.meta.url);
 // oxlint-disable-next-line unicorn/prefer-import-meta-properties
@@ -252,6 +254,15 @@ async function mergeConfigAgents(sources) {
         );
       }
 
+      if (
+        typeof model_reasoning_effort === "string" &&
+        !MODEL_REASONING_EFFORT_VALUE_SET.has(model_reasoning_effort)
+      ) {
+        throw new Error(
+          `Agent model_reasoning_effort must be one of ${MODEL_REASONING_EFFORT_VALUES.join(", ")}, or null for ${agent_name} in ${path}.`
+        );
+      }
+
       merged[agent_name] = {
         ...merged[agent_name],
         ...(has_model ? { model } : {}),
@@ -320,8 +331,7 @@ async function readTemplate(file_path) {
  */
 function renderTemplate(template, fields) {
   const reasoning_effort_line =
-    typeof fields.model_reasoning_effort === "string" &&
-    fields.model_reasoning_effort.trim() !== ""
+    typeof fields.model_reasoning_effort === "string"
       ? `model_reasoning_effort = "${fields.model_reasoning_effort}"\n`
       : "";
 
