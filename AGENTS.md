@@ -19,10 +19,19 @@ node plugins/codex-orchestrator/scripts/install-subagents.mjs --dry-run
 node plugins/codex-orchestrator/scripts/install-subagents.mjs
                  # install bundled subagent definitions from config
 bun install      # install local dev dependencies
+bun run test     # bun test
 bun run typecheck # tsc
 bun run lint     # oxlint --config oxlint.config.ts
 bun run format   # oxfmt --config oxfmt.config.ts; formats TS/JS, ignores Markdown
 ```
+
+## Test Conventions
+
+- Repository tests are authored as TypeScript `.test.ts` files and run with Bun via `bun run test`.
+- Installer tests should keep direct Node subprocess coverage for the documented `.mjs` CLI path.
+- Importable installer utilities may be tested directly, but importing the installer module must not trigger CLI side effects.
+- Test fixture files should use temporary directories and clean them up after each test.
+- Run `bun run test`, `bun run typecheck`, and `bun run lint` before claiming implementation completion.
 
 ## TypeScript Conventions
 
@@ -46,7 +55,8 @@ bun run format   # oxfmt --config oxfmt.config.ts; formats TS/JS, ignores Markdo
 | `plugins/codex-orchestrator/skills/install-subagents/SKILL.md` | Installer skill; documents Node-based installation flow |
 | `plugins/codex-orchestrator/assets/subagents/*.yaml` | Subagent templates containing `{{MODEL}}` placeholders |
 | `plugins/codex-orchestrator/scripts/install-subagents.mjs` | Node CLI that renders YAML templates and writes subagent definitions |
-| `package.json` | Only `typecheck`, `lint`, and `format` scripts are defined |
+| `plugins/codex-orchestrator/scripts/install-subagents.test.ts` | Bun TypeScript tests; keeps Node subprocess coverage for the installer CLI |
+| `package.json` | Only `test`, `typecheck`, `lint`, and `format` scripts are defined |
 | `tsconfig.json` | TypeScript checks run via `bun run typecheck` |
 | `oxlint.config.ts` | Lint source of truth; not ESLint |
 | `oxfmt.config.ts` | Format source of truth; not Prettier |
