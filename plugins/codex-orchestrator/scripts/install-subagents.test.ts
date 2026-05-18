@@ -485,7 +485,7 @@ test("discovers bundled TOML templates and includes Codex custom agent fields", 
       expect(content).toContain("developer_instructions = ");
       expect(content).toContain("Derived from oh-my-opencode-slim 1.1.1");
       expect(content).toContain("Source repository: https://github.com/alvinunreal/oh-my-opencode-slim");
-      expect(content).toContain("Source commit: f6b3990de1551b101416154812508e64e2f2d0ca");
+      expect(content).toContain("Source commit: 29e31b87fee53e13de8904f6a6ab466417528940");
       expect(content).toContain(
         "Adaptation: OpenCode-specific tools and permissions translated for Codex custom agents."
       );

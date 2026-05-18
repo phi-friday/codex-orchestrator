@@ -123,7 +123,7 @@ reference:
 ```toml
 # Derived from oh-my-opencode-slim 1.1.1
 # Source repository: https://github.com/alvinunreal/oh-my-opencode-slim
-# Source commit: f6b3990de1551b101416154812508e64e2f2d0ca
+# Source commit: 29e31b87fee53e13de8904f6a6ab466417528940
 # Source file: src/agents/designer.ts
 # Adaptation: OpenCode-specific tools and permissions translated for Codex custom agents.
 ```

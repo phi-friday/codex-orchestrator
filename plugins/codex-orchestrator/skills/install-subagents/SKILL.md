@@ -34,10 +34,16 @@ The bundled roles are:
 - `oracle`
 
 Templates set fixed `model_reasoning_effort` values directly. The `librarian`
-template also includes a Context7 MCP server configuration. Each template starts
-with TOML provenance comments identifying the referenced
-`oh-my-opencode-slim` version, repository, commit, source agent file, and Codex
-adaptation note.
+template also includes a Context7 MCP server configuration.
+
+The bundled templates are quality-preserving Codex adaptations of their
+referenced `oh-my-opencode-slim` agents. They are not minimal role summaries:
+the source agent's role, behavior, constraints, output expectations, and
+specialized guidance should remain present unless a source instruction is
+incompatible with Codex. Each template starts with TOML provenance comments
+identifying the referenced version, repository, commit, source agent file, and
+Codex adaptation notes for intentional tool, permission, or runtime
+substitutions.
 
 ## Configuration
 
