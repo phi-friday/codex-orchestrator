@@ -1,6 +1,11 @@
 {
   "name": "codex-orchestrator",
   "private": true,
+  "author": {
+    "name": "phi",
+    "email": "phi.friday@gmail.com",
+    "url": "https://github.com/phi-friday/codex-orchestrator"
+  },
   "type": "module",
   "module": "index.ts",
   "scripts": {

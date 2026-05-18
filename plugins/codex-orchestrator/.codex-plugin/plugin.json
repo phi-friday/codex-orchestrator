@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "description": "Skills for orchestrating Codex work with installable subagent definitions.",
   "author": {
-    "name": "codex-orchestrator",
-    "email": "noreply@example.com",
-    "url": "https://example.com/codex-orchestrator"
+    "name": "phi",
+    "email": "phi.friday@gmail.com",
+    "url": "https://github.com/phi-friday/codex-orchestrator"
   },
-  "homepage": "https://example.com/codex-orchestrator",
-  "repository": "https://example.com/codex-orchestrator",
+  "homepage": "https://github.com/phi-friday/codex-orchestrator",
+  "repository": "https://github.com/phi-friday/codex-orchestrator",
   "license": "MIT",
   "keywords": ["codex", "orchestration", "subagents"],
   "skills": "./skills/",
