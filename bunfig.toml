@@ -1,3 +1,5 @@
+telemetry = false
+
 [test]
 pathIgnorePatterns = [
   "**/dist/**",
@@ -8,3 +10,7 @@ pathIgnorePatterns = [
   "**/coverage/**",
   "**/references/**",
 ]
+
+[install]
+minimumReleaseAge = 259200 # 3 days in seconds
+minimumReleaseAgeExcludes = ["@types/bun", "typescript", "oxfmt", "oxlint", "oxlint-tsgolint"]
