@@ -134,22 +134,22 @@ test("merges config agents and validates model values", async (): Promise<void> 
   try {
     await writeJson(global_config, {
       agents: {
-        "codebase-explorer": {
+        "orchestrator-explorer": {
           model: "gpt-5.4",
         },
-        "implementation-worker": {
+        fixer: {
           model: "gpt-5.4",
         },
       },
     });
     await writeJson(repository_config, {
       agents: {
-        "codebase-explorer": {},
+        "orchestrator-explorer": {},
       },
     });
     await writeJson(explicit_config, {
       agents: {
-        "implementation-worker": {
+        fixer: {
           model: null,
         },
       },
@@ -169,10 +169,10 @@ test("merges config agents and validates model values", async (): Promise<void> 
     ]);
 
     expect(merged_agents).toEqual({
-      "codebase-explorer": {
+      "orchestrator-explorer": {
         model: "gpt-5.4",
       },
-      "implementation-worker": {
+      fixer: {
         model: null,
       },
     });
@@ -206,18 +206,16 @@ test("resolves target directories from explicit, repository, and global sources"
 
 test("reads template names and renders model tokens", async (): Promise<void> => {
   const fixture = await createFixture("install-subagents-unit-template-");
-  const template_path = join(fixture.cwd, "worker.yaml");
+  const template_path = join(fixture.cwd, "worker.toml");
 
   try {
-    await writeFile(template_path, "name: implementation-worker\nmodel: {{MODEL}}\n", "utf8");
+    await writeFile(template_path, 'name = "fixer"\nmodel = "{{MODEL}}"\n', "utf8");
 
     const template = await readTemplate(template_path);
 
-    expect(template.agent_name).toBe("implementation-worker");
-    expect(template.output_name).toBe("worker.yaml");
-    expect(renderTemplate(template.content, "gpt-5.4")).toBe(
-      "name: implementation-worker\nmodel: gpt-5.4\n"
-    );
+    expect(template.agent_name).toBe("fixer");
+    expect(template.output_name).toBe("worker.toml");
+    expect(renderTemplate(template.content, "gpt-5.4")).toBe('name = "fixer"\nmodel = "gpt-5.4"\n');
   } finally {
     await fixture.cleanup();
   }
@@ -244,24 +242,24 @@ test("merges config precedence and lets null disable inherited agents", async ()
   try {
     await writeJson(join(fixture.home, ".codex", "codex-orchestrator.json"), {
       agents: {
-        "codebase-explorer": {
+        "orchestrator-explorer": {
           model: "gpt-5.4",
         },
-        "implementation-worker": {
+        fixer: {
           model: "gpt-5.4",
         },
       },
     });
     await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
       agents: {
-        "codebase-explorer": {
+        "orchestrator-explorer": {
           model: "gpt-5.4-codex",
         },
       },
     });
     await writeJson(explicit_config, {
       agents: {
-        "implementation-worker": {
+        fixer: {
           model: null,
         },
       },
@@ -275,13 +273,10 @@ test("merges config precedence and lets null disable inherited agents", async ()
 
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");
-    expect(await readFile(join(target_dir, "codebase-explorer.yaml"), "utf8")).toMatch(
+    expect(await readFile(join(target_dir, "orchestrator-explorer.toml"), "utf8")).toMatch(
       /gpt-5\.4-codex/u
     );
-    await expectRejectsCode(
-      readFile(join(target_dir, "implementation-worker.yaml"), "utf8"),
-      "ENOENT"
-    );
+    await expectRejectsCode(readFile(join(target_dir, "fixer.toml"), "utf8"), "ENOENT");
   } finally {
     await fixture.cleanup();
   }
@@ -293,14 +288,14 @@ test("inherits lower-priority model when higher-priority agent has no model fiel
   try {
     await writeJson(join(fixture.home, ".codex", "codex-orchestrator.json"), {
       agents: {
-        "codebase-explorer": {
+        "orchestrator-explorer": {
           model: "gpt-5.4",
         },
       },
     });
     await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
       agents: {
-        "codebase-explorer": {},
+        "orchestrator-explorer": {},
       },
     });
 
@@ -309,7 +304,7 @@ test("inherits lower-priority model when higher-priority agent has no model fiel
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");
     expect(
-      await readFile(join(fixture.cwd, ".codex", "agents", "codebase-explorer.yaml"), "utf8")
+      await readFile(join(fixture.cwd, ".codex", "agents", "orchestrator-explorer.toml"), "utf8")
     ).toMatch(/gpt-5\.4/u);
   } finally {
     await fixture.cleanup();
@@ -322,7 +317,7 @@ test("defaults repository config installs to the repository agent directory", as
   try {
     await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
       agents: {
-        "codebase-explorer": {
+        "orchestrator-explorer": {
           model: "gpt-5.4-codex",
         },
       },
@@ -333,7 +328,7 @@ test("defaults repository config installs to the repository agent directory", as
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");
     expect(
-      await readFile(join(fixture.cwd, ".codex", "agents", "codebase-explorer.yaml"), "utf8")
+      await readFile(join(fixture.cwd, ".codex", "agents", "orchestrator-explorer.toml"), "utf8")
     ).toMatch(/gpt-5\.4-codex/u);
   } finally {
     await fixture.cleanup();
@@ -346,7 +341,7 @@ test("defaults global-only config installs to the global agent directory", async
   try {
     await writeJson(join(fixture.home, ".codex", "codex-orchestrator.json"), {
       agents: {
-        "implementation-worker": {
+        fixer: {
           model: "gpt-5.4",
         },
       },
@@ -356,9 +351,9 @@ test("defaults global-only config installs to the global agent directory", async
 
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");
-    expect(
-      await readFile(join(fixture.home, ".codex", "agents", "implementation-worker.yaml"), "utf8")
-    ).toMatch(/gpt-5\.4/u);
+    expect(await readFile(join(fixture.home, ".codex", "agents", "fixer.toml"), "utf8")).toMatch(
+      /gpt-5\.4/u
+    );
   } finally {
     await fixture.cleanup();
   }
@@ -384,7 +379,7 @@ test("requires target directory for explicit config", async (): Promise<void> =>
   try {
     await writeJson(explicit_config, {
       agents: {
-        "codebase-explorer": {
+        "orchestrator-explorer": {
           model: "gpt-5.4",
         },
       },
@@ -405,13 +400,13 @@ test("dry-run reports planned writes and removals without modifying files", asyn
 
   try {
     await mkdir(target_dir, { recursive: true });
-    await writeFile(join(target_dir, "implementation-worker.yaml"), "existing", "utf8");
+    await writeFile(join(target_dir, "fixer.toml"), "existing", "utf8");
     await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
       agents: {
-        "codebase-explorer": {
+        "orchestrator-explorer": {
           model: "gpt-5.4",
         },
-        "implementation-worker": {
+        fixer: {
           model: null,
         },
       },
@@ -425,9 +420,81 @@ test("dry-run reports planned writes and removals without modifying files", asyn
 
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout).toMatch(/\[dry-run\] write .*codebase-explorer\.yaml/u);
-    expect(result.stdout).toMatch(/\[dry-run\] remove .*implementation-worker\.yaml/u);
-    expect(await readFile(join(target_dir, "implementation-worker.yaml"), "utf8")).toBe("existing");
+    expect(result.stdout).toMatch(/\[dry-run\] write .*orchestrator-explorer\.toml/u);
+    expect(result.stdout).toMatch(/\[dry-run\] remove .*fixer\.toml/u);
+    expect(await readFile(join(target_dir, "fixer.toml"), "utf8")).toBe("existing");
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("discovers bundled TOML templates and includes Codex custom agent fields", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-bundled-");
+
+  try {
+    await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
+      agents: {
+        designer: {
+          model: "gpt-5.4",
+        },
+        fixer: {
+          model: "gpt-5.4-mini",
+        },
+        librarian: {
+          model: "gpt-5.4-mini",
+        },
+        observer: {
+          model: "gpt-5.4-mini",
+        },
+        oracle: {
+          model: "gpt-5.5",
+        },
+        "orchestrator-explorer": {
+          model: "gpt-5.4-mini",
+        },
+      },
+    });
+
+    const result = await runInstaller([], fixture.cwd, fixture.home);
+
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+
+    const output_dir = join(fixture.cwd, ".codex", "agents");
+    const expected_agents = [
+      "designer",
+      "fixer",
+      "librarian",
+      "observer",
+      "oracle",
+      "orchestrator-explorer",
+    ];
+
+    const rendered_agents = await Promise.all(
+      expected_agents.map(async agent_name => ({
+        agent_name,
+        content: await readFile(join(output_dir, `${agent_name}.toml`), "utf8"),
+      }))
+    );
+
+    for (const { agent_name, content } of rendered_agents) {
+      expect(content).toContain(`name = "${agent_name}"`);
+      expect(content).toContain("description = ");
+      expect(content).toContain("model = ");
+      expect(content).toContain("model_reasoning_effort = ");
+      expect(content).toContain("developer_instructions = ");
+      expect(content).toContain("Derived from oh-my-opencode-slim 1.1.1");
+      expect(content).toContain("Source repository: https://github.com/alvinunreal/oh-my-opencode-slim");
+      expect(content).toContain("Source commit: f6b3990de1551b101416154812508e64e2f2d0ca");
+      expect(content).toContain(
+        "Adaptation: OpenCode-specific tools and permissions translated for Codex custom agents."
+      );
+    }
+
+    const librarian = await readFile(join(output_dir, "librarian.toml"), "utf8");
+
+    expect(librarian).toContain("[mcp_servers.context7]");
+    expect(librarian).toContain('url = "https://mcp.context7.com/mcp"');
   } finally {
     await fixture.cleanup();
   }

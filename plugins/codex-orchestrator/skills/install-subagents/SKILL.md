@@ -12,17 +12,32 @@ bundled with the Codex Orchestrator plugin.
 
 ## What It Installs
 
-The installer reads YAML templates from:
+The installer reads Codex custom agent TOML templates from:
 
 ```text
 plugins/codex-orchestrator/assets/subagents/
 ```
 
-Each template contains a `{{MODEL}}` token. The TypeScript installer replaces
-that token with each configured subagent model, then writes enabled rendered
-YAML files to the target subagent directory. Bundled agents with `model: null`
-or no final model are disabled, and any matching previously installed bundled
-file is removed from the target directory.
+Each template contains a `{{MODEL}}` token in its `model` field. The Node
+installer replaces that token with each configured subagent model, then writes
+enabled rendered TOML files to the target agent directory. Bundled agents with
+`model: null` or no final model are disabled, and any matching previously
+installed bundled file is removed from the target directory.
+
+The bundled roles are:
+
+- `designer`
+- `orchestrator-explorer`
+- `fixer`
+- `librarian`
+- `observer`
+- `oracle`
+
+Templates set fixed `model_reasoning_effort` values directly. The `librarian`
+template also includes a Context7 MCP server configuration. Each template starts
+with TOML provenance comments identifying the referenced
+`oh-my-opencode-slim` version, repository, commit, source agent file, and Codex
+adaptation note.
 
 ## Configuration
 
@@ -39,10 +54,10 @@ Use this shape:
 ```json
 {
   "agents": {
-    "codebase-explorer": {
-      "model": "gpt-5.4"
+    "orchestrator-explorer": {
+      "model": "gpt-5.4-mini"
     },
-    "implementation-worker": {
+    "fixer": {
       "model": null
     }
   }
@@ -96,4 +111,4 @@ When using this skill as an agent:
 1. Ensure a global, repository-local, or explicit JSON config exists.
 2. Use `--dry-run` first when planned removals or the target directory are uncertain.
 3. Use `--target-dir` whenever passing `--config`.
-4. Run the installer and report installed or removed bundled YAML filenames.
+4. Run the installer and report installed or removed bundled TOML filenames.

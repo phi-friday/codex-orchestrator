@@ -276,7 +276,7 @@ async function listTemplateFiles(asset_dir) {
   return entries
     .filter(entry => entry.isFile())
     .map(entry => join(asset_dir, entry.name))
-    .filter(file_path => [".yaml", ".yml"].includes(extname(file_path)))
+    .filter(file_path => extname(file_path) === ".toml")
     .sort();
 }
 
@@ -286,7 +286,7 @@ async function listTemplateFiles(asset_dir) {
  */
 async function readTemplate(file_path) {
   const content = await readFile(file_path, "utf8");
-  const name_match = /^name:\s*["']?([^"'\n]+)["']?\s*$/mu.exec(content);
+  const name_match = /^name\s*=\s*"([^"\n]+)"\s*$/mu.exec(content);
   const output_name = basename(file_path);
 
   return {
@@ -330,26 +330,22 @@ async function installSubagents(options) {
   const template_files = await listTemplateFiles(options.asset_dir);
 
   if (template_files.length === 0) {
-    throw new Error(`No YAML subagent templates found in ${options.asset_dir}.`);
+    throw new Error(`No TOML subagent templates found in ${options.asset_dir}.`);
   }
 
   const templates = await Promise.all(template_files.map(file_path => readTemplate(file_path)));
   const template_names = new Set(templates.map(template => template.agent_name));
-  const existing_outputs = await Promise.all(
-    templates.map(async template => ({
-      exists: await fileExists(join(target_dir, template.output_name)),
-      output_path: join(target_dir, template.output_name),
-      template,
-    }))
-  );
   /** @type {{ content: string; output_path: string }[]} */
   const planned_writes = [];
+  /** @type {string[]} */
+  const removal_candidates = [];
   /** @type {string[]} */
   const planned_removals = [];
 
   warnUnknownAgents(agents, template_names);
 
-  for (const { exists, output_path, template } of existing_outputs) {
+  for (const template of templates) {
+    const output_path = join(target_dir, template.output_name);
     const model = agents[template.agent_name]?.model;
 
     if (typeof model === "string" && model.trim() !== "") {
@@ -360,10 +356,19 @@ async function installSubagents(options) {
       continue;
     }
 
-    if (exists) {
-      planned_removals.push(output_path);
-    }
+    removal_candidates.push(output_path);
   }
+
+  const existing_removals = await Promise.all(
+    [...new Set(removal_candidates)].map(async removal_path => ({
+      exists: await fileExists(removal_path),
+      removal_path,
+    }))
+  );
+
+  planned_removals.push(
+    ...existing_removals.filter(removal => removal.exists).map(removal => removal.removal_path)
+  );
 
   if (!options.dry_run) {
     await mkdir(target_dir, { recursive: true });

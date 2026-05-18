@@ -145,9 +145,6 @@ unknown config keys.
 
 ## Risks / Trade-offs
 
-- Existing installed YAML files may remain if only TOML bundled outputs are
-  considered for removal -> Handle legacy bundled YAML names as scoped cleanup
-  targets during the migration.
 - TOML name parsing with a regular expression can miss unusual formatting ->
   Keep generated templates simple and test the supported `name = "..."` form.
 - Self-contained Context7 may duplicate a parent MCP definition -> Codex config

@@ -84,17 +84,10 @@ the target directory when present.
   the target directory
 - **THEN** the installer removes `fixer.toml`
 
-#### Scenario: Legacy bundled YAML file is removed
-
-- **WHEN** the final configuration disables a bundled agent and a legacy bundled
-  YAML output for that agent exists in the target directory
-- **THEN** the installer removes the legacy bundled YAML output
-
 #### Scenario: Unrelated files are preserved
 
 - **WHEN** the final configuration disables `fixer` and the target directory
-  contains files that do not correspond to bundled templates or legacy bundled
-  outputs
+  contains files that do not correspond to bundled templates
 - **THEN** the installer leaves those unrelated files unchanged
 
 ### Requirement: Dry-run reports planned changes
