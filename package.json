@@ -6,6 +6,7 @@
   "scripts": {
     "typecheck": "tsc",
     "lint": "oxlint --config oxlint.config.ts",
+    "test": "bun test",
     "format": "oxfmt --config oxfmt.config.ts"
   },
   "devDependencies": {
