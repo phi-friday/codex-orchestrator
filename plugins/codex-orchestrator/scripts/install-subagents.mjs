@@ -2,7 +2,8 @@
 import { writeSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 /**
@@ -40,7 +41,10 @@ Options:
 `;
 
 const TEMPLATE_TOKEN = "{{MODEL}}";
-const PLUGIN_ROOT = resolve(import.meta.dirname, "..");
+// oxlint-disable-next-line unicorn/prefer-import-meta-properties
+const MODULE_PATH = fileURLToPath(import.meta.url);
+// oxlint-disable-next-line unicorn/prefer-import-meta-properties
+const PLUGIN_ROOT = resolve(dirname(MODULE_PATH), "..");
 const DEFAULT_ASSET_DIR = join(PLUGIN_ROOT, "assets", "subagents");
 const GLOBAL_CONFIG_PATH = "~/.codex/codex-orchestrator.json";
 const GLOBAL_TARGET_DIR = "~/.codex/agents";
@@ -402,11 +406,34 @@ async function main() {
   await installSubagents(options);
 }
 
-try {
-  await main();
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
+/**
+ * @param {string} module_url
+ * @param {string | undefined} entry_path
+ * @returns {boolean}
+ */
+function isMainModule(module_url, entry_path) {
+  return entry_path !== undefined && module_url === pathToFileURL(resolve(entry_path)).href;
+}
 
-  writeStderr(`install-subagents: ${message}\n${USAGE}`);
-  process.exitCode = 1;
+export {
+  discoverConfigSources,
+  installSubagents,
+  listTemplateFiles,
+  mergeConfigAgents,
+  parseOptions,
+  readConfigAgents,
+  readTemplate,
+  renderTemplate,
+  resolveTargetDir,
+};
+
+if (isMainModule(import.meta.url, process.argv[1])) {
+  try {
+    await main();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    writeStderr(`install-subagents: ${message}\n${USAGE}`);
+    process.exitCode = 1;
+  }
 }

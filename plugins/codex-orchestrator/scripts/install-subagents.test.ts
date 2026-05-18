@@ -4,6 +4,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { expect, test } from "bun:test";
+import {
+  mergeConfigAgents,
+  parseOptions,
+  readTemplate,
+  renderTemplate,
+  resolveTargetDir,
+} from "./install-subagents.mjs";
 
 type RunResult = {
   code: number;
@@ -84,6 +91,137 @@ async function expectRejectsCode(promise: Promise<unknown>, code: string): Promi
     expect(error).toHaveProperty("code", code);
   }
 }
+
+test("exports focused installer utilities without running the CLI", (): void => {
+  expect(parseOptions).toBeFunction();
+  expect(mergeConfigAgents).toBeFunction();
+  expect(resolveTargetDir).toBeFunction();
+  expect(readTemplate).toBeFunction();
+  expect(renderTemplate).toBeFunction();
+});
+
+test("parses options and expands configured paths", (): void => {
+  const options = parseOptions([
+    "--config",
+    "~/codex-orchestrator.json",
+    "--target-dir",
+    "~/agents",
+    "--asset-dir",
+    "~/templates",
+    "--dry-run",
+  ]);
+
+  expect(options.config_path).toEndWith("/codex-orchestrator.json");
+  expect(options.target_dir).toEndWith("/agents");
+  expect(options.asset_dir).toEndWith("/templates");
+  expect(options.dry_run).toBe(true);
+  expect(options.help).toBe(false);
+});
+
+test("requires a target directory when parsing explicit config options", (): void => {
+  expect((): void => {
+    parseOptions(["--config", "codex-orchestrator.json"]);
+  }).toThrow("--target-dir is required when --config is provided.");
+});
+
+test("merges config agents and validates model values", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-unit-merge-");
+  const global_config = join(fixture.cwd, "global.json");
+  const repository_config = join(fixture.cwd, "repository.json");
+  const explicit_config = join(fixture.cwd, "explicit.json");
+  const invalid_config = join(fixture.cwd, "invalid.json");
+
+  try {
+    await writeJson(global_config, {
+      agents: {
+        "codebase-explorer": {
+          model: "gpt-5.4",
+        },
+        "implementation-worker": {
+          model: "gpt-5.4",
+        },
+      },
+    });
+    await writeJson(repository_config, {
+      agents: {
+        "codebase-explorer": {},
+      },
+    });
+    await writeJson(explicit_config, {
+      agents: {
+        "implementation-worker": {
+          model: null,
+        },
+      },
+    });
+    await writeJson(invalid_config, {
+      agents: {
+        broken: {
+          model: 5,
+        },
+      },
+    });
+
+    const merged_agents = await mergeConfigAgents([
+      { kind: "global", path: global_config },
+      { kind: "repository", path: repository_config },
+      { kind: "explicit", path: explicit_config },
+    ]);
+
+    expect(merged_agents).toEqual({
+      "codebase-explorer": {
+        model: "gpt-5.4",
+      },
+      "implementation-worker": {
+        model: null,
+      },
+    });
+
+    try {
+      await mergeConfigAgents([{ kind: "global", path: invalid_config }]);
+      throw new Error("Expected invalid model config to reject.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/Agent model must be a string or null/u);
+    }
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("resolves target directories from explicit, repository, and global sources", (): void => {
+  const configured_target_dir = resolve("custom-agents");
+
+  expect(resolveTargetDir(configured_target_dir, [])).toBe(configured_target_dir);
+  expect(
+    resolveTargetDir(undefined, [
+      { kind: "global", path: "/tmp/global.json" },
+      { kind: "repository", path: "/tmp/repository.json" },
+    ])
+  ).toBe(resolve(".codex", "agents"));
+  expect(resolveTargetDir(undefined, [{ kind: "global", path: "/tmp/global.json" }])).toEndWith(
+    "/.codex/agents"
+  );
+});
+
+test("reads template names and renders model tokens", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-unit-template-");
+  const template_path = join(fixture.cwd, "worker.yaml");
+
+  try {
+    await writeFile(template_path, "name: implementation-worker\nmodel: {{MODEL}}\n", "utf8");
+
+    const template = await readTemplate(template_path);
+
+    expect(template.agent_name).toBe("implementation-worker");
+    expect(template.output_name).toBe("worker.yaml");
+    expect(renderTemplate(template.content, "gpt-5.4")).toBe(
+      "name: implementation-worker\nmodel: gpt-5.4\n"
+    );
+  } finally {
+    await fixture.cleanup();
+  }
+});
 
 test("rejects removed --model option", async (): Promise<void> => {
   const fixture = await createFixture("install-subagents-model-");
