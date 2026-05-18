@@ -14,7 +14,7 @@ const config: OxfmtConfig = defineConfig({
   jsxSingleQuote: false,
   quoteProps: "as-needed",
   semi: true,
-  ignorePatterns: ["**/*.md"],
+  ignorePatterns: ["**/*.md", "references/**"],
 });
 
 export default config;

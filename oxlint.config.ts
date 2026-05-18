@@ -50,6 +50,7 @@ const config: OxlintConfig = defineConfig({
     ".opencode/**",
     ".serena/**",
     "openspec/**",
+    "references/**",
   ],
   rules: {
     // oxc

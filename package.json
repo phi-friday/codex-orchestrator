@@ -11,8 +11,10 @@
   "scripts": {
     "typecheck": "tsc",
     "lint": "oxlint --config oxlint.config.ts",
-    "test": "bun test",
-    "format": "oxfmt --config oxfmt.config.ts"
+    "test": "bun test ./plugins ./scripts",
+    "format": "oxfmt --config oxfmt.config.ts",
+    "reference:oh-my-opencode-slim": "bun scripts/reference-oh-my-opencode-slim.ts --version $(bun reference:oh-my-opencode-slim:version)",
+    "reference:oh-my-opencode-slim:version": "jq -r '.references[\"oh-my-opencode-slim\"].version' package.json"
   },
   "devDependencies": {
     "@types/bun": "1.3.14",
@@ -22,5 +24,10 @@
   },
   "peerDependencies": {
     "typescript": "6.0.3"
+  },
+  "references": {
+    "oh-my-opencode-slim": {
+      "version": "1.1.1"
+    }
   }
 }

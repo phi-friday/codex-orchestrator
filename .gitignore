@@ -32,3 +32,14 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# references
+references/oh-my-opencode-slim/**
+!references/oh-my-opencode-slim/
+!references/oh-my-opencode-slim/**/
+!references/oh-my-opencode-slim/**/codemap.md
+!references/oh-my-opencode-slim/**/*.ts
+references/oh-my-opencode-slim/**/*.test.ts
+!references/oh-my-opencode-slim/AGENTS.md
+!references/oh-my-opencode-slim/LICENSE
+!references/oh-my-opencode-slim/package.json
