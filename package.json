@@ -11,7 +11,7 @@
   "scripts": {
     "typecheck": "tsc",
     "lint": "oxlint --config oxlint.config.ts",
-    "test": "bun test ./plugins ./scripts",
+    "test": "bun test ./plugins ./scripts --concurrent --max-concurrency 4",
     "format": "oxfmt --config oxfmt.config.ts",
     "reference:oh-my-opencode-slim": "bun scripts/reference-oh-my-opencode-slim.ts --version $(bun reference:oh-my-opencode-slim:version)",
     "reference:oh-my-opencode-slim:version": "jq -r '.references[\"oh-my-opencode-slim\"].version' package.json"
