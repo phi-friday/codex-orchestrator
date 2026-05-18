@@ -6,7 +6,7 @@ Repository guidance for agentic coding agents.
 
 - This repository packages a Codex Orchestrator plugin, not a conventional app.
 - The plugin goal is to help a parent Codex agent split independent work across subagents while the parent owns integration and verification.
-- The plugin also ships an installer skill/script for rendering bundled subagent YAML templates with a selected model.
+- The plugin also ships an installer skill/script for rendering bundled subagent YAML templates from JSON configuration.
 - Bun is used for local dependency management and verification, but repo skills and helper scripts should assume Node.js runtime semantics.
 - There is currently no `src/` application entrypoint. `package.json` metadata may still contain Bun init leftovers such as `module: "index.ts"`.
 - Dependencies are locked by `bun.lock`; do not add npm/yarn/pnpm lockfiles.
@@ -14,10 +14,10 @@ Repository guidance for agentic coding agents.
 ## Commands
 
 ```bash
-node plugins/codex-orchestrator/scripts/install-subagents.mjs --model gpt-5.4 --dry-run
-                 # preview bundled subagent install output
-node plugins/codex-orchestrator/scripts/install-subagents.mjs --model gpt-5.4
-                 # install bundled subagent definitions to ~/.codex/agents
+node plugins/codex-orchestrator/scripts/install-subagents.mjs --dry-run
+                 # preview config-driven bundled subagent writes/removals
+node plugins/codex-orchestrator/scripts/install-subagents.mjs
+                 # install bundled subagent definitions from config
 bun install      # install local dev dependencies
 bun run typecheck # tsc
 bun run lint     # oxlint --config oxlint.config.ts

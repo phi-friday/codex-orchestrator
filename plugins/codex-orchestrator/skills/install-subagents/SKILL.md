@@ -1,6 +1,6 @@
 ---
 name: install-subagents
-description: Install Codex Orchestrator subagent definitions from bundled asset templates with a selected model.
+description: Install Codex Orchestrator subagent definitions from bundled asset templates using JSON configuration.
 license: MIT
 compatibility: Requires Node.js.
 ---
@@ -19,36 +19,73 @@ plugins/codex-orchestrator/assets/subagents/
 ```
 
 Each template contains a `{{MODEL}}` token. The TypeScript installer replaces
-that token with the model passed through `--model`, then writes the rendered
-YAML files to the target subagent directory.
+that token with each configured subagent model, then writes enabled rendered
+YAML files to the target subagent directory. Bundled agents with `model: null`
+or no final model are disabled, and any matching previously installed bundled
+file is removed from the target directory.
+
+## Configuration
+
+The installer reads JSON config from these locations, in increasing precedence:
+
+```text
+~/.codex/codex-orchestrator.json
+<cwd>/codex-orchestrator.json
+--config <path>
+```
+
+Use this shape:
+
+```json
+{
+  "agents": {
+    "codebase-explorer": {
+      "model": "gpt-5.4"
+    },
+    "implementation-worker": {
+      "model": null
+    }
+  }
+}
+```
+
+Higher-priority config files override individual per-agent fields from lower
+priority files. Set `model` to `null` to disable an inherited bundled agent.
+Unknown agent names are ignored with a warning.
 
 ## Command
 
 From the repository root:
 
 ```bash
-node plugins/codex-orchestrator/scripts/install-subagents.mjs --model gpt-5.4
+node plugins/codex-orchestrator/scripts/install-subagents.mjs
 ```
 
-By default, the installer writes to:
+When using repository config at `<cwd>/codex-orchestrator.json`, the installer
+defaults to:
+
+```text
+<cwd>/.codex/agents
+```
+
+When only global config exists, it defaults to:
 
 ```text
 ~/.codex/agents
 ```
 
-Use `--target-dir` if this Codex installation expects subagents somewhere else:
+Use `--config` with `--target-dir` for an explicit config path:
 
 ```bash
 node plugins/codex-orchestrator/scripts/install-subagents.mjs \
-  --model gpt-5.4 \
+  --config ./codex-orchestrator.json \
   --target-dir ~/.codex/agents
 ```
 
-Preview writes without modifying files:
+Preview writes and removals without modifying files:
 
 ```bash
 node plugins/codex-orchestrator/scripts/install-subagents.mjs \
-  --model gpt-5.4 \
   --dry-run
 ```
 
@@ -56,7 +93,7 @@ node plugins/codex-orchestrator/scripts/install-subagents.mjs \
 
 When using this skill as an agent:
 
-1. Ask for the model only if the user did not provide one.
-2. Use `--dry-run` first when the target directory is uncertain.
-3. Run the installer with the chosen `--model`.
-4. Report the installed YAML filenames and target directory.
+1. Ensure a global, repository-local, or explicit JSON config exists.
+2. Use `--dry-run` first when planned removals or the target directory are uncertain.
+3. Use `--target-dir` whenever passing `--config`.
+4. Run the installer and report installed or removed bundled YAML filenames.
