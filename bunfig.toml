@@ -1,0 +1,10 @@
+[test]
+pathIgnorePatterns = [
+  "**/dist/**",
+  "**/node_modules/**",
+  "**/tmp/**",
+  "**/fixtures/**",
+  "**/test/**",
+  "**/coverage/**",
+  "**/references/**",
+]
