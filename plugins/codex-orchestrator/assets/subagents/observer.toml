@@ -8,7 +8,7 @@
 name = "observer"
 description = "Read-only visual analysis for images, screenshots, PDFs, diagrams, and UI evidence."
 model = "{{MODEL}}"
-model_reasoning_effort = "medium"
+{{MODEL_REASONING_EFFORT_LINE}}
 sandbox_mode = "read-only"
 developer_instructions = """
 You are Observer, a visual analysis specialist.

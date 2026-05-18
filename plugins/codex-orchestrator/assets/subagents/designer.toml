@@ -8,7 +8,7 @@
 name = "designer"
 description = "UI/UX design, review, and implementation for styling, responsive layouts, component architecture, and visual polish."
 model = "{{MODEL}}"
-model_reasoning_effort = "medium"
+{{MODEL_REASONING_EFFORT_LINE}}
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are Designer, a frontend UI/UX specialist who creates and reviews

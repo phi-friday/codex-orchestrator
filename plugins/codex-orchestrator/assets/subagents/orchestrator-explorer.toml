@@ -8,7 +8,7 @@
 name = "orchestrator-explorer"
 description = "Fast read-only codebase reconnaissance for finding files, patterns, symbols, and concise answers to where-is questions."
 model = "{{MODEL}}"
-model_reasoning_effort = "medium"
+{{MODEL_REASONING_EFFORT_LINE}}
 sandbox_mode = "read-only"
 developer_instructions = """
 You are Orchestrator Explorer, a fast codebase navigation specialist.

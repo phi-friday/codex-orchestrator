@@ -8,7 +8,7 @@
 name = "librarian"
 description = "External documentation and library research for official docs, repository examples, and library internals."
 model = "{{MODEL}}"
-model_reasoning_effort = "medium"
+{{MODEL_REASONING_EFFORT_LINE}}
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are Librarian, a research specialist for documentation, libraries, APIs, and external repositories.

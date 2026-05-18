@@ -18,11 +18,12 @@ The installer reads Codex custom agent TOML templates from:
 plugins/codex-orchestrator/assets/subagents/
 ```
 
-Each template contains a `{{MODEL}}` token in its `model` field. The Node
-installer replaces that token with each configured subagent model, then writes
-enabled rendered TOML files to the target agent directory. Bundled agents with
-`model: null` or no final model are disabled, and any matching previously
-installed bundled file is removed from the target directory.
+Each template contains installer tokens for the configured `model` and optional
+`model_reasoning_effort` fields. The Node installer renders each enabled
+subagent from the final per-agent configuration, then writes enabled rendered
+TOML files to the target agent directory. Bundled agents with `model: null` or
+no final model are disabled, and any matching previously installed bundled file
+is removed from the target directory.
 
 The bundled roles are:
 
@@ -33,8 +34,11 @@ The bundled roles are:
 - `observer`
 - `oracle`
 
-Templates set fixed `model_reasoning_effort` values directly. The `librarian`
-template also includes a Context7 MCP server configuration.
+The installer writes `model_reasoning_effort` only when the final per-agent
+configuration contains a non-empty string value. Missing, null, or blank
+reasoning effort omits the TOML field and leaves Codex's default behavior in
+control. The `librarian` template also includes a Context7 MCP server
+configuration.
 
 The bundled templates are quality-preserving Codex adaptations of their
 referenced `oh-my-opencode-slim` agents. They are not minimal role summaries:
@@ -61,9 +65,14 @@ Use this shape:
 {
   "agents": {
     "orchestrator-explorer": {
-      "model": "gpt-5.4-mini"
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": "medium"
     },
     "fixer": {
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": null
+    },
+    "oracle": {
       "model": null
     }
   }
@@ -72,6 +81,9 @@ Use this shape:
 
 Higher-priority config files override individual per-agent fields from lower
 priority files. Set `model` to `null` to disable an inherited bundled agent.
+Set `model_reasoning_effort` to `null` to remove an inherited reasoning effort
+override while keeping the agent enabled when its final `model` is a non-empty
+string.
 Unknown agent names are ignored with a warning.
 
 ## Command

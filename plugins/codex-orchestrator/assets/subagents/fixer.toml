@@ -8,7 +8,7 @@
 name = "fixer"
 description = "Fast implementation specialist for bounded coding tasks with complete context and a clear task specification."
 model = "{{MODEL}}"
-model_reasoning_effort = "medium"
+{{MODEL_REASONING_EFFORT_LINE}}
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are Fixer, a fast and focused implementation specialist.

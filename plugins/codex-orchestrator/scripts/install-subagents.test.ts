@@ -92,6 +92,16 @@ async function expectRejectsCode(promise: Promise<unknown>, code: string): Promi
   }
 }
 
+async function expectRejectsMessage(promise: Promise<unknown>, pattern: RegExp): Promise<void> {
+  try {
+    await promise;
+    throw new Error(`Expected promise to reject with message ${pattern}.`);
+  } catch (error) {
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(pattern);
+  }
+}
+
 test("exports focused installer utilities without running the CLI", (): void => {
   expect(parseOptions).toBeFunction();
   expect(mergeConfigAgents).toBeFunction();
@@ -124,33 +134,50 @@ test("requires a target directory when parsing explicit config options", (): voi
   }).toThrow("--target-dir is required when --config is provided.");
 });
 
-test("merges config agents and validates model values", async (): Promise<void> => {
+test("merges config agents and validates model and reasoning effort values", async (): Promise<void> => {
   const fixture = await createFixture("install-subagents-unit-merge-");
   const global_config = join(fixture.cwd, "global.json");
   const repository_config = join(fixture.cwd, "repository.json");
   const explicit_config = join(fixture.cwd, "explicit.json");
   const invalid_config = join(fixture.cwd, "invalid.json");
+  const invalid_reasoning_effort_config = join(fixture.cwd, "invalid-reasoning-effort.json");
 
   try {
     await writeJson(global_config, {
       agents: {
         "orchestrator-explorer": {
           model: "gpt-5.4",
+          model_reasoning_effort: "medium",
         },
         fixer: {
           model: "gpt-5.4",
+          model_reasoning_effort: "medium",
+        },
+        oracle: {
+          model: "gpt-5.5",
+          model_reasoning_effort: "medium",
+        },
+        observer: {
+          model: "gpt-5.4-mini",
         },
       },
     });
     await writeJson(repository_config, {
       agents: {
         "orchestrator-explorer": {},
+        oracle: {
+          model_reasoning_effort: "high",
+        },
+        observer: {
+          model_reasoning_effort: " ",
+        },
       },
     });
     await writeJson(explicit_config, {
       agents: {
         fixer: {
           model: null,
+          model_reasoning_effort: null,
         },
       },
     });
@@ -158,6 +185,13 @@ test("merges config agents and validates model values", async (): Promise<void> 
       agents: {
         broken: {
           model: 5,
+        },
+      },
+    });
+    await writeJson(invalid_reasoning_effort_config, {
+      agents: {
+        broken: {
+          model_reasoning_effort: 5,
         },
       },
     });
@@ -171,19 +205,30 @@ test("merges config agents and validates model values", async (): Promise<void> 
     expect(merged_agents).toEqual({
       "orchestrator-explorer": {
         model: "gpt-5.4",
+        model_reasoning_effort: "medium",
       },
       fixer: {
         model: null,
+        model_reasoning_effort: null,
+      },
+      oracle: {
+        model: "gpt-5.5",
+        model_reasoning_effort: "high",
+      },
+      observer: {
+        model: "gpt-5.4-mini",
+        model_reasoning_effort: " ",
       },
     });
 
-    try {
-      await mergeConfigAgents([{ kind: "global", path: invalid_config }]);
-      throw new Error("Expected invalid model config to reject.");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toMatch(/Agent model must be a string or null/u);
-    }
+    await expectRejectsMessage(
+      mergeConfigAgents([{ kind: "global", path: invalid_config }]),
+      /Agent model must be a string or null/u
+    );
+    await expectRejectsMessage(
+      mergeConfigAgents([{ kind: "global", path: invalid_reasoning_effort_config }]),
+      /Agent model_reasoning_effort must be a string or null/u
+    );
   } finally {
     await fixture.cleanup();
   }
@@ -204,18 +249,41 @@ test("resolves target directories from explicit, repository, and global sources"
   );
 });
 
-test("reads template names and renders model tokens", async (): Promise<void> => {
+test("reads template names and renders model and optional reasoning effort fields", async (): Promise<void> => {
   const fixture = await createFixture("install-subagents-unit-template-");
   const template_path = join(fixture.cwd, "worker.toml");
 
   try {
-    await writeFile(template_path, 'name = "fixer"\nmodel = "{{MODEL}}"\n', "utf8");
+    await writeFile(
+      template_path,
+      'name = "fixer"\nmodel = "{{MODEL}}"\n{{MODEL_REASONING_EFFORT_LINE}}developer_instructions = ""\n',
+      "utf8"
+    );
 
     const template = await readTemplate(template_path);
 
     expect(template.agent_name).toBe("fixer");
     expect(template.output_name).toBe("worker.toml");
-    expect(renderTemplate(template.content, "gpt-5.4")).toBe('name = "fixer"\nmodel = "gpt-5.4"\n');
+    expect(
+      renderTemplate(template.content, {
+        model: "gpt-5.4",
+        model_reasoning_effort: "high",
+      })
+    ).toBe(
+      'name = "fixer"\nmodel = "gpt-5.4"\nmodel_reasoning_effort = "high"\ndeveloper_instructions = ""\n'
+    );
+    expect(
+      renderTemplate(template.content, {
+        model: "gpt-5.4",
+        model_reasoning_effort: null,
+      })
+    ).toBe('name = "fixer"\nmodel = "gpt-5.4"\ndeveloper_instructions = ""\n');
+    expect(
+      renderTemplate(template.content, {
+        model: "gpt-5.4",
+        model_reasoning_effort: " ",
+      })
+    ).toBe('name = "fixer"\nmodel = "gpt-5.4"\ndeveloper_instructions = ""\n');
   } finally {
     await fixture.cleanup();
   }
@@ -436,6 +504,7 @@ test("discovers bundled TOML templates and includes Codex custom agent fields", 
       agents: {
         designer: {
           model: "gpt-5.4",
+          model_reasoning_effort: "medium",
         },
         fixer: {
           model: "gpt-5.4-mini",
@@ -448,6 +517,7 @@ test("discovers bundled TOML templates and includes Codex custom agent fields", 
         },
         oracle: {
           model: "gpt-5.5",
+          model_reasoning_effort: "high",
         },
         "orchestrator-explorer": {
           model: "gpt-5.4-mini",
@@ -481,7 +551,6 @@ test("discovers bundled TOML templates and includes Codex custom agent fields", 
       expect(content).toContain(`name = "${agent_name}"`);
       expect(content).toContain("description = ");
       expect(content).toContain("model = ");
-      expect(content).toContain("model_reasoning_effort = ");
       expect(content).toContain("developer_instructions = ");
       expect(content).toContain("Derived from oh-my-opencode-slim 1.1.1");
       expect(content).toContain("Source repository: https://github.com/alvinunreal/oh-my-opencode-slim");
@@ -490,6 +559,14 @@ test("discovers bundled TOML templates and includes Codex custom agent fields", 
         "Adaptation: OpenCode-specific tools and permissions translated for Codex custom agents."
       );
     }
+
+    const designer = await readFile(join(output_dir, "designer.toml"), "utf8");
+    const oracle = await readFile(join(output_dir, "oracle.toml"), "utf8");
+    const fixer = await readFile(join(output_dir, "fixer.toml"), "utf8");
+
+    expect(designer).toContain('model_reasoning_effort = "medium"');
+    expect(oracle).toContain('model_reasoning_effort = "high"');
+    expect(fixer).not.toContain("model_reasoning_effort");
 
     const librarian = await readFile(join(output_dir, "librarian.toml"), "utf8");
 

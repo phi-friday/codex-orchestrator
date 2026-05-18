@@ -40,7 +40,8 @@ Options:
   --help, -h           Show this help.
 `;
 
-const TEMPLATE_TOKEN = "{{MODEL}}";
+const MODEL_TEMPLATE_TOKEN = "{{MODEL}}";
+const MODEL_REASONING_EFFORT_LINE_TOKEN = "{{MODEL_REASONING_EFFORT_LINE}}";
 // oxlint-disable-next-line unicorn/prefer-import-meta-properties
 const MODULE_PATH = fileURLToPath(import.meta.url);
 // oxlint-disable-next-line unicorn/prefer-import-meta-properties
@@ -191,7 +192,7 @@ async function discoverConfigSources(explicit_config_path) {
 
 /**
  * @param {string} config_path
- * @returns {Promise<Record<string, { model?: string | null }>>}
+ * @returns {Promise<Record<string, { model?: string | null; model_reasoning_effort?: string | null }>>}
  */
 async function readConfigAgents(config_path) {
   const text = await readFile(config_path, "utf8");
@@ -207,15 +208,15 @@ async function readConfigAgents(config_path) {
     throw new Error(`Config must contain an agents object: ${config_path}.`);
   }
 
-  return /** @type {Record<string, { model?: string | null }>} */ (agents);
+  return /** @type {Record<string, { model?: string | null; model_reasoning_effort?: string | null }>} */ (agents);
 }
 
 /**
  * @param {ConfigSource[]} sources
- * @returns {Promise<Record<string, { model?: string | null }>>}
+ * @returns {Promise<Record<string, { model?: string | null; model_reasoning_effort?: string | null }>>}
  */
 async function mergeConfigAgents(sources) {
-  /** @type {Record<string, { model?: string | null }>} */
+  /** @type {Record<string, { model?: string | null; model_reasoning_effort?: string | null }>} */
   const merged = {};
   const source_agents = await Promise.all(
     sources.map(async source => ({
@@ -232,14 +233,29 @@ async function mergeConfigAgents(sources) {
 
       const has_model = Object.hasOwn(fields, "model");
       const model = has_model ? Reflect.get(fields, "model") : undefined;
+      const has_model_reasoning_effort = Object.hasOwn(fields, "model_reasoning_effort");
+      const model_reasoning_effort = has_model_reasoning_effort
+        ? Reflect.get(fields, "model_reasoning_effort")
+        : undefined;
 
       if (has_model && model !== null && typeof model !== "string") {
         throw new Error(`Agent model must be a string or null for ${agent_name} in ${path}.`);
       }
 
+      if (
+        has_model_reasoning_effort &&
+        model_reasoning_effort !== null &&
+        typeof model_reasoning_effort !== "string"
+      ) {
+        throw new Error(
+          `Agent model_reasoning_effort must be a string or null for ${agent_name} in ${path}.`
+        );
+      }
+
       merged[agent_name] = {
         ...merged[agent_name],
         ...(has_model ? { model } : {}),
+        ...(has_model_reasoning_effort ? { model_reasoning_effort } : {}),
       };
     }
   }
@@ -299,15 +315,23 @@ async function readTemplate(file_path) {
 
 /**
  * @param {string} template
- * @param {string} model
+ * @param {{ model: string; model_reasoning_effort?: string | null }} fields
  * @returns {string}
  */
-function renderTemplate(template, model) {
-  return template.replaceAll(TEMPLATE_TOKEN, model);
+function renderTemplate(template, fields) {
+  const reasoning_effort_line =
+    typeof fields.model_reasoning_effort === "string" &&
+    fields.model_reasoning_effort.trim() !== ""
+      ? `model_reasoning_effort = "${fields.model_reasoning_effort}"\n`
+      : "";
+
+  return template
+    .replaceAll(MODEL_TEMPLATE_TOKEN, fields.model)
+    .replaceAll(MODEL_REASONING_EFFORT_LINE_TOKEN, reasoning_effort_line);
 }
 
 /**
- * @param {Record<string, { model?: string | null }>} agents
+ * @param {Record<string, { model?: string | null; model_reasoning_effort?: string | null }>} agents
  * @param {Set<string>} template_names
  * @returns {void}
  */
@@ -350,7 +374,10 @@ async function installSubagents(options) {
 
     if (typeof model === "string" && model.trim() !== "") {
       planned_writes.push({
-        content: renderTemplate(template.content, model),
+        content: renderTemplate(template.content, {
+          model,
+          model_reasoning_effort: agents[template.agent_name]?.model_reasoning_effort,
+        }),
         output_path,
       });
       continue;
