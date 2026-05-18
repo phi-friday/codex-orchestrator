@@ -43,9 +43,13 @@ const config: OxlintConfig = defineConfig({
     "**/dist/**",
     "**/dist-ssr/**",
     "**/coverage/**",
-    ".agents/**",
     "**/*.d.ts",
     "**/*.legacy.*",
+    ".agents/**",
+    ".codex/**",
+    ".opencode/**",
+    ".serena/**",
+    "openspec/**",
   ],
   rules: {
     // oxc

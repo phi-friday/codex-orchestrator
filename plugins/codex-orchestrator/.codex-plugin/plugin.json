@@ -1,0 +1,28 @@
+{
+  "name": "codex-orchestrator",
+  "version": "0.1.0",
+  "description": "Skills for orchestrating Codex work with installable subagent definitions.",
+  "author": {
+    "name": "codex-orchestrator",
+    "email": "noreply@example.com",
+    "url": "https://example.com/codex-orchestrator"
+  },
+  "homepage": "https://example.com/codex-orchestrator",
+  "repository": "https://example.com/codex-orchestrator",
+  "license": "MIT",
+  "keywords": ["codex", "orchestration", "subagents"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Orchestrator",
+    "shortDescription": "Coordinate Codex work through reusable orchestration skills.",
+    "longDescription": "Provides an orchestrator skill and a companion installation skill for setting up subagent definitions from bundled assets.",
+    "developerName": "codex-orchestrator",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Use $codex-orchestrator to split this work across subagents.",
+      "Use $install-subagents to install the bundled subagent definitions."
+    ],
+    "brandColor": "#2563EB"
+  }
+}
