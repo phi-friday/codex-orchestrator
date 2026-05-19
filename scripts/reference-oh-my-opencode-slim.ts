@@ -8,7 +8,14 @@ import { parseArgs } from "node:util";
 
 const DEFAULT_REPO_URL = "https://github.com/alvinunreal/oh-my-opencode-slim.git";
 const DEFAULT_REFERENCE_DIR = "references/oh-my-opencode-slim";
-const REFERENCE_ENTRY_NAMES = ["src", "package.json", "LICENSE", "AGENTS.md", "codemap.md"] as const;
+const REFERENCE_ENTRY_NAMES = [
+  "src",
+  "package.json",
+  "LICENSE",
+  "AGENTS.md",
+  "README.md",
+  "codemap.md",
+] as const;
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 
 type ParsedValue = string | boolean | string[] | boolean[] | undefined;

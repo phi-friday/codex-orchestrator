@@ -41,5 +41,6 @@ references/oh-my-opencode-slim/**
 !references/oh-my-opencode-slim/**/*.ts
 references/oh-my-opencode-slim/**/*.test.ts
 !references/oh-my-opencode-slim/AGENTS.md
+!references/oh-my-opencode-slim/README.md
 !references/oh-my-opencode-slim/LICENSE
 !references/oh-my-opencode-slim/package.json
