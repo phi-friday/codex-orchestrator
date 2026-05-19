@@ -23,7 +23,9 @@ research, broad file discovery, planning-heavy analysis, verification,
 multi-step tasks, multi-file edits, and requests with independent subtasks.
 
 For substantive work, start from a subagent-first assumption: spawn suitable
-available specialists unless an allowed local-only exception applies.
+available specialists unless an allowed local-only exception applies. At the
+first orchestrator use in a Codex session, perform the availability check
+described below before making routing decisions.
 
 An explicit opt-out overrides this default. In that case, proceed locally when
 possible while preserving normal safety, testing, and verification judgment.
@@ -41,8 +43,17 @@ subagents. Omit source agents and runtime features this plugin does not provide.
 
 ## Availability Rule
 
-Before routing, check which subagents are actually available in the current
-Codex session.
+At the first `codex-orchestrator` use in a Codex session, check which bundled
+subagents are actually available and remember the observed availability for the
+session. Use that remembered result for later routing decisions instead of
+repeating bundled subagent installation checks.
+
+If expected bundled subagents are missing during that first check, use or
+recommend the `install-subagents` skill once, report the resulting availability
+or limitation, then continue with whatever specialists or fallbacks are actually
+available. Do not repeatedly trigger bundled subagent installation later in the
+same Codex session unless the user explicitly asks to install, reinstall,
+refresh, or repair subagents.
 
 The source OpenCode prompt dynamically filters disabled agents from agent
 descriptions, validation routing, and parallel examples. A static Codex skill
@@ -58,7 +69,8 @@ Bundled custom-agent names from this plugin:
 - `fixer`
 - `observer`
 
-If a bundled specialist is unavailable, use Codex fallbacks only when they fit:
+After the session-scoped install or refresh opportunity has been handled, if a
+bundled specialist remains unavailable, use Codex fallbacks only when they fit:
 
 - codebase reconnaissance: `explorer`
 - bounded implementation and test edits: `worker`
@@ -279,8 +291,10 @@ applies.
 
 ### 3. Delegation Check
 
-Stop before acting. Review available specialists and decide which suitable
-subagent to spawn. Local-only execution requires a concrete allowed reason.
+Stop before acting. Use the session-scoped availability result, decide which
+suitable subagent to spawn, and avoid repeating bundled subagent installation
+checks unless the user explicitly asks to install or refresh. Local-only
+execution requires a concrete allowed reason.
 
 Subagent-first rules:
 
@@ -295,9 +309,9 @@ Subagent-first rules:
   independent research, implementation, review, visual analysis, or verification
   lanes.
 - Keep only narrow work local: explicit opt-out, unavailable matching
-  specialist, trivial single command, exact known-file lookup, immediately
-  blocking critical-path step with no independent lane, or already-known exact
-  context.
+  specialist after the session-scoped install or refresh opportunity, trivial
+  single command, exact known-file lookup, immediately blocking critical-path
+  step with no independent lane, or already-known exact context.
 
 ### 4. Split and Parallelize
 
@@ -457,6 +471,10 @@ Before reporting completion, the parent must:
 - Review subagent outputs and changed files.
 - Integrate results into one coherent solution.
 - Resolve conflicts and overlapping assumptions.
+- Close, stop, or otherwise release every completed, failed, obsolete, or
+  no-longer-needed Codex-managed subagent thread when the runtime provides such
+  a control; if no supported control is available, report that limitation
+  without implying an OS process was terminated.
 - Run relevant tests, type checks, lint, builds, or manual inspections.
 - Report skipped, failed, or unavailable verification precisely.
 - If no subagent was spawned for applicable work, report the concrete allowed

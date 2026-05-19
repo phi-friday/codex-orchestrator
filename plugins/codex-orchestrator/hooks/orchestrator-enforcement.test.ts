@@ -48,6 +48,19 @@ async function runHook(input: unknown): Promise<RunResult> {
   };
 }
 
+function expectBlockedReason(output: ReturnType<typeof buildStopOutput>): string {
+  expect(output).toEqual({
+    decision: "block",
+    reason: expect.any(String),
+  });
+
+  if (output === null || !("reason" in output)) {
+    throw new Error("expected blocked Stop output");
+  }
+
+  return output.reason;
+}
+
 describe("orchestrator hook prompt decisions", (): void => {
   test("detects applicable implementation prompts", (): void => {
     expect(isApplicablePrompt("Implement the hook support and add tests.")).toBe(true);
@@ -108,6 +121,9 @@ describe("orchestrator hook prompt decisions", (): void => {
     expect(output?.hookSpecificOutput.additionalContext).toContain(
       "immediately blocking critical-path work"
     );
+    expect(output?.hookSpecificOutput.additionalContext).toContain(
+      "Codex-managed subagent threads"
+    );
   });
 
   test("does not build UserPromptSubmit context for opt-out prompts", (): void => {
@@ -121,14 +137,44 @@ describe("orchestrator hook prompt decisions", (): void => {
 });
 
 describe("orchestrator hook stop decisions", (): void => {
-  test("continues completion claims that omit verification", (): void => {
+  test("blocks delegated completion without cleanup evidence or unsupported cleanup limitation", (): void => {
     expect(
-      shouldContinueAtStop({
+      buildStopOutput({
         hook_event_name: "Stop",
         stop_hook_active: false,
-        last_assistant_message: "Implemented the hook. Done.",
+        last_assistant_message:
+          "Implemented the hook with delegated subagent work and verified the result.",
       })
-    ).toBe(true);
+    ).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("close, stop, or otherwise release"),
+    });
+  });
+
+  test("allows delegated completion with cleanup evidence", (): void => {
+    expect(
+      buildStopOutput({
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        last_assistant_message:
+          "Implemented the hook with delegated subagent work, closed the no-longer-needed Codex-managed subagent threads, and ran bun run test.",
+      })
+    ).toEqual({
+      continue: true,
+    });
+  });
+
+  test("allows delegated completion with unsupported cleanup limitation", (): void => {
+    expect(
+      buildStopOutput({
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        last_assistant_message:
+          "Implemented the hook with delegated subagent work, but no supported close, stop, or release mechanism was available, and I ran bun run test.",
+      })
+    ).toEqual({
+      continue: true,
+    });
   });
 
   test("does not continue when Stop hook is already active", (): void => {
@@ -140,8 +186,20 @@ describe("orchestrator hook stop decisions", (): void => {
       })
     ).toBe(false);
   });
+});
 
-  test("allows completion messages with verification evidence", (): void => {
+describe("orchestrator hook stop completion standards", (): void => {
+  test("continues completion claims that omit verification", (): void => {
+    expect(
+      shouldContinueAtStop({
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        last_assistant_message: "Implemented the hook. Done.",
+      })
+    ).toBe(true);
+  });
+
+  test("blocks completion messages with delegated work but no cleanup evidence", (): void => {
     const output = buildStopOutput({
       hook_event_name: "Stop",
       stop_hook_active: false,
@@ -150,10 +208,28 @@ describe("orchestrator hook stop decisions", (): void => {
     });
 
     expect(output).toEqual({
-      continue: true,
+      decision: "block",
+      reason: expect.stringContaining("close, stop, or otherwise release"),
     });
+    expect(expectBlockedReason(output)).toContain("delegation evidence");
   });
 
+  test("does not treat completed delegated work as cleanup evidence by itself", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed the delegated subagent work and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("close, stop, or otherwise release"),
+    });
+  });
+});
+
+describe("orchestrator hook stop local-only standards", (): void => {
   test("allows completion messages with local-only verification reason", (): void => {
     const output = buildStopOutput({
       hook_event_name: "Stop",
@@ -163,6 +239,19 @@ describe("orchestrator hook stop decisions", (): void => {
     });
 
     expect(output).toEqual({
+      continue: true,
+    });
+  });
+
+  test("allows local-only completion without cleanup evidence", (): void => {
+    expect(
+      buildStopOutput({
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        last_assistant_message:
+          "Completed locally because the task was an exact known-file lookup, and I verified the result with bun run test.",
+      })
+    ).toEqual({
       continue: true,
     });
   });
@@ -179,7 +268,9 @@ describe("orchestrator hook stop decisions", (): void => {
       continue: true,
     });
   });
+});
 
+describe("orchestrator hook stop wording standards", (): void => {
   test("blocks completion claims without delegation evidence or local-only reason", (): void => {
     expect(
       buildStopOutput({
@@ -189,7 +280,7 @@ describe("orchestrator hook stop decisions", (): void => {
       })
     ).toEqual({
       decision: "block",
-      reason: expect.stringContaining("delegation evidence"),
+      reason: expect.stringContaining("close, stop, or otherwise release"),
     });
   });
 
@@ -214,15 +305,32 @@ describe("orchestrator hook stop decisions", (): void => {
       })
     ).toEqual({
       decision: "block",
-      reason: expect.stringContaining("delegation evidence"),
+      reason: expect.stringContaining("close, stop, or otherwise release"),
     });
+  });
+
+  test("uses cleanup wording instead of OS process termination wording", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Implemented the hook with delegated subagent work and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("close, stop, or otherwise release"),
+    });
+    const reason = expectBlockedReason(output);
+    expect(reason).not.toContain("process");
+    expect(reason).toContain("Codex-managed subagent threads");
   });
 
   test("allows Korean completion messages with delegation and verification evidence", (): void => {
     const output = buildStopOutput({
       hook_event_name: "Stop",
       stop_hook_active: false,
-      last_assistant_message: "수정했고 서브에이전트 결과를 통합했고 타입체크를 실행했습니다.",
+      last_assistant_message: "수정했고 서브에이전트 결과를 통합했고 닫았고 타입체크를 실행했습니다.",
     });
 
     expect(output).toEqual({

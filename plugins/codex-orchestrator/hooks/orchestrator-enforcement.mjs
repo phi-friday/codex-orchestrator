@@ -13,7 +13,7 @@ const ORCHESTRATOR_CONTEXT = [
   "Use the codex-orchestrator workflow before acting unless the user explicitly opted out.",
   "Spawn suitable available subagents by default for applicable substantive work.",
   "Only stay local when an allowed exception applies: explicit opt-out, unavailable matching subagents, trivial single-command checks, exact known-file lookups, or immediately blocking critical-path work with no independent lane.",
-  "Keep parent-owned integration and verification, and still apply the orchestration decision gate and completion standard.",
+  "Keep parent-owned integration and verification, close or release no-longer-needed Codex-managed subagent threads when supported, and still apply the orchestration decision gate and completion standard.",
 ].join(" ");
 
 const USER_PROMPT_HOOK = "UserPromptSubmit";
@@ -56,6 +56,18 @@ const DELEGATION_PATTERNS = [
   /\b(spawn(?:ed)?|delegat(?:e|ed|ing)|subagent(?:s)?|sub-agent(?:s)?|orchestrator-explorer|librarian|oracle|designer|fixer|observer)\b/iu,
   /\b(parent-owned integration|parent owned integration)\b/iu,
   /(서브 ?에이전트|하위 ?에이전트|위임|분담|스폰|통합)/u,
+];
+
+const CLEANUP_EVIDENCE_PATTERNS = [
+  /\b(close(?:d|ing)?|stop(?:ped|ping)?|release(?:d|ing)?)\b/iu,
+  /(닫|중지|멈추|해제|정리|마감)/u,
+];
+
+const UNSUPPORTED_CLEANUP_LIMITATION_PATTERNS = [
+  /\b(no supported (close|stop|release) mechanism was available|no supported lifecycle control was available)\b/iu,
+  /\b(cannot|could not|unable to)\s+(close|stop|release)\b/iu,
+  /\b(no support(?:ed)? cleanup control|unsupported cleanup limitation)\b/iu,
+  /(지원되는 (닫기|중지|해제)|지원된 (닫기|중지|해제).*(없|불가))/u,
 ];
 
 const LOCAL_ONLY_REASON_PATTERNS = [
@@ -145,11 +157,20 @@ export function shouldContinueAtStop(input) {
   const claims_completion = matchesAny(message, COMPLETION_PATTERNS);
   const mentions_verification = matchesAny(message, VERIFICATION_PATTERNS);
   const mentions_delegation = matchesAny(message, DELEGATION_PATTERNS);
+  const mentions_cleanup_evidence = matchesAny(message, CLEANUP_EVIDENCE_PATTERNS);
+  const mentions_unsupported_cleanup_limitation = matchesAny(
+    message,
+    UNSUPPORTED_CLEANUP_LIMITATION_PATTERNS
+  );
   const mentions_allowed_local_reason = matchesAny(message, LOCAL_ONLY_REASON_PATTERNS);
 
   return (
     claims_completion &&
-    (!mentions_verification || (!mentions_delegation && !mentions_allowed_local_reason))
+    (!mentions_verification ||
+      (!mentions_delegation && !mentions_allowed_local_reason) ||
+      (mentions_delegation &&
+        !mentions_cleanup_evidence &&
+        !mentions_unsupported_cleanup_limitation))
   );
 }
 
@@ -171,7 +192,7 @@ export function buildStopOutput(input) {
   return {
     decision: "block",
     reason:
-      "Apply the codex-orchestrator completion standard: include delegation evidence or a concrete allowed local-only reason, then report verification before finishing.",
+      "Apply the codex-orchestrator completion standard: include delegation evidence or a concrete allowed local-only reason, close, stop, or otherwise release no-longer-needed Codex-managed subagent threads when supported, or report that no supported close, stop, or release mechanism was available, then include verification before finishing.",
   };
 }
 
