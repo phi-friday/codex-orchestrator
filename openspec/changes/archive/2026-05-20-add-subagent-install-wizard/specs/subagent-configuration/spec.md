@@ -21,7 +21,8 @@ bundled subagent installation choices through a browser form.
 
 ### Requirement: Wizard submit stores answers for Codex
 The local subagent install wizard SHALL persist submitted form answers to a
-session-scoped JSON file that the Codex agent can read.
+session-scoped JSON file that the Codex agent can read, and SHALL terminate the
+local wizard server after successful submission.
 
 #### Scenario: Submitted answers are written to a known file
 - **WHEN** the user submits the wizard form
@@ -37,6 +38,22 @@ session-scoped JSON file that the Codex agent can read.
 - **WHEN** the wizard accepts a form submission
 - **THEN** it accepts the submission only through the local server session that
   rendered the form
+
+#### Scenario: Wizard exits after submitted answers are available
+- **WHEN** the user submits the wizard form successfully
+- **THEN** the wizard closes the local server, reads the session-scoped answers
+  JSON file, reports the submitted answers, and exits
+
+#### Scenario: Wizard page closes after successful submit
+- **WHEN** the user submits the wizard form successfully and the submit response
+  succeeds
+- **THEN** the browser page attempts to close itself and shows that the tab can
+  be closed if the browser blocks automatic closing
+
+#### Scenario: Wizard times out without submission
+- **WHEN** the wizard server is running and no submitted answers file appears
+  before the configured timeout
+- **THEN** the wizard closes the local server and exits with a timeout error
 
 ## MODIFIED Requirements
 
@@ -65,6 +82,11 @@ wizard is available and appropriate.
   the reported local URL
 - **THEN** the agent may use the submitted wizard answers as the gathered
   installation intent before preparing configuration changes
+
+#### Scenario: Agent waits for wizard command completion
+- **WHEN** the agent starts the local subagent install wizard command
+- **THEN** the agent polls the running command session until it exits or times
+  out before continuing with configuration preparation or ending the agent turn
 
 #### Scenario: Chat interview remains available
 - **WHEN** the wizard is unavailable, unsuitable, or declined by the user

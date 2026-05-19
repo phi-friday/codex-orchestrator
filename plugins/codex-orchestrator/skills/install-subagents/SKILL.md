@@ -133,11 +133,51 @@ node plugins/codex-orchestrator/scripts/install-subagents.mjs \
   --dry-run
 ```
 
+## Local Interview Wizard
+
+When the user can open a local browser URL, prefer the local wizard to collect
+the install interview:
+
+```bash
+node plugins/codex-orchestrator/scripts/install-subagents-wizard.mjs
+```
+
+After the Node server starts, report the printed `wizard url` to the user. The
+wizard renders available configuration sources, target directory choices,
+matching installed bundled agent files, bundled agent descriptions, current
+per-agent model choices, and current per-agent reasoning effort choices.
+
+The wizard uses a minimal local `POST /submit` endpoint to write submitted
+answers to the printed `answers path`. It does not write
+`codex-orchestrator.json`, run `install-subagents.mjs`, or modify agent TOML
+files. After the user submits the form, the wizard closes the local server,
+reads the answers JSON, prints the submitted answers, and exits. If no answers
+arrive before the timeout, the wizard exits with a timeout error.
+
+While the wizard command is running, keep the command session open and poll it
+regularly for completion instead of ending the agent turn and waiting for the
+user to report that they submitted the form. Once the command exits, continue
+with the normal agent-controlled flow: read or use the printed submitted
+answers, prepare or update configuration, run `install-subagents.mjs --dry-run`,
+summarize the plan, and ask for final user confirmation before any non-dry-run
+install.
+
+If the wizard is unavailable, unsuitable, or declined by the user, use the chat
+interview flow below.
+
 ## Agent Behavior
 
 When using this skill as an agent:
 
 1. Interview before planning.
+   - Prefer the local interview wizard when the user can open the reported local
+     URL. Start the wizard, report the `wizard url`, wait for the command to
+     print submitted answers and exit, and read the `answers path` JSON before
+     preparing configuration changes. Do this by polling the running command
+     session until it exits or times out; do not finish the agent response while
+     the wizard command is still running.
+   - Fall back to a chat interview when the wizard is unavailable, unsuitable,
+     or declined by the user.
    - Identify available configuration sources: global
      `~/.codex/codex-orchestrator.json`, repository-local
      `<cwd>/codex-orchestrator.json`, and any explicit config path the user

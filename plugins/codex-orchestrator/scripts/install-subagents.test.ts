@@ -566,6 +566,14 @@ test("install-subagents skill requires interview, dry-run review, and confirmati
   const normalized_skill = skill.replaceAll(/\s+/gu, " ");
 
   expect(normalized_skill).toContain("Interview before planning");
+  expect(normalized_skill).toContain("Local Interview Wizard");
+  expect(normalized_skill).toContain("wizard url");
+  expect(normalized_skill).toContain("answers path");
+  expect(normalized_skill).toContain("POST /submit");
+  expect(normalized_skill).toContain("closes the local server");
+  expect(normalized_skill).toContain("timeout error");
+  expect(normalized_skill).toContain("poll it regularly for completion");
+  expect(normalized_skill).toContain("do not finish the agent response");
   expect(normalized_skill).toContain("configuration sources");
   expect(normalized_skill).toContain("target directory choices");
   expect(normalized_skill).toContain("existing matching bundled agent files");
@@ -636,7 +644,9 @@ test("discovers bundled TOML templates and includes Codex custom agent fields", 
       expect(content).toContain("model = ");
       expect(content).toContain("developer_instructions = ");
       expect(content).toContain("Derived from oh-my-opencode-slim 1.1.1");
-      expect(content).toContain("Source repository: https://github.com/alvinunreal/oh-my-opencode-slim");
+      expect(content).toContain(
+        "Source repository: https://github.com/alvinunreal/oh-my-opencode-slim"
+      );
       expect(content).toContain("Source commit: 29e31b87fee53e13de8904f6a6ab466417528940");
       expect(content).toContain(
         "Adaptation: OpenCode-specific tools and permissions translated for Codex custom agents."

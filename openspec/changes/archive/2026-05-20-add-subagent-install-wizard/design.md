@@ -24,6 +24,10 @@ from a known temporary JSON file.
   choices, selected configuration destination, and selected target directory.
 - Persist submitted answers to a session-scoped JSON file that the Codex agent
   can read after the user submits the form.
+- Wait for the answers JSON file after starting the server, read it as soon as
+  it exists, and exit the Node process after submit.
+- Enforce a timeout so a wizard process cannot remain alive indefinitely when a
+  user never submits the form.
 - Keep config writing, dry-run execution, dry-run summary, final confirmation,
   and non-dry-run install execution in the Codex agent flow.
 - Use Node.js built-ins and avoid adding a web framework dependency.
@@ -79,13 +83,24 @@ listing, and bundled agent names where those helpers are suitable. If dry-run
 planning needs structured data later, that should be factored separately, but
 this change should not require structured installer planning to land.
 
+### Treat submit as wizard completion
+
+The CLI should not keep running after a successful form submit. After the server
+starts it prints the local URL and answers path, then waits for the answers JSON
+file. The `POST /submit` handler writes the answers file and closes the server.
+The CLI then reads the answers file, prints the submitted JSON for Codex, and
+exits. A timeout stops the server and fails the command when no answers arrive.
+
+Alternative considered: leave the server alive and rely on the parent Codex
+agent to stop it. That works in manual tests, but it makes process cleanup
+depend on the agent remembering to terminate a long-running session.
+
 ## Risks / Trade-offs
 
 - Local browser cannot open automatically in all agent environments -> The
   agent reports the URL and the user opens it manually when needed.
-- Server process may outlive the interview -> The script should exit after a
-  successful submit when practical, or print the answers path so Codex can stop
-  the process after reading it.
+- Server process may outlive the interview -> The CLI waits for the answers file
+  with a timeout and closes the server after submit or timeout.
 - Multiple simultaneous wizard sessions could conflict -> Use unique session
   IDs and session-scoped output directories.
 - Browser UI can submit stale state if config changes while open -> Treat the

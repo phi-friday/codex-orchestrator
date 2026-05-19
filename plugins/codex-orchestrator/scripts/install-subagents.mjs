@@ -210,7 +210,9 @@ async function readConfigAgents(config_path) {
     throw new Error(`Config must contain an agents object: ${config_path}.`);
   }
 
-  return /** @type {Record<string, { model?: string | null; model_reasoning_effort?: string | null }>} */ (agents);
+  return /** @type {Record<string, { model?: string | null; model_reasoning_effort?: string | null }>} */ (
+    agents
+  );
 }
 
 /**
@@ -459,6 +461,8 @@ function isMainModule(module_url, entry_path) {
 
 export {
   discoverConfigSources,
+  expandHome,
+  fileExists,
   installSubagents,
   listTemplateFiles,
   mergeConfigAgents,
