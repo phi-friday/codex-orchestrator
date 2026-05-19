@@ -12,6 +12,7 @@
   "license": "MIT",
   "keywords": ["codex", "orchestration", "subagents"],
   "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "Codex Orchestrator",
     "shortDescription": "Coordinate Codex work through reusable orchestration skills.",

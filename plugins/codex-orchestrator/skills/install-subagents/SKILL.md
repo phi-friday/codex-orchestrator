@@ -10,6 +10,15 @@ compatibility: Requires Node.js.
 Use this skill when the user wants to install or refresh the subagent definitions
 bundled with the Codex Orchestrator plugin.
 
+The plugin also bundles lifecycle hooks that nudge Codex toward the orchestrator
+workflow by default. Those hooks only run when Codex plugin hooks are enabled in
+the user's environment:
+
+```toml
+[features]
+plugin_hooks = true
+```
+
 ## What It Installs
 
 The installer reads Codex custom agent TOML templates from:

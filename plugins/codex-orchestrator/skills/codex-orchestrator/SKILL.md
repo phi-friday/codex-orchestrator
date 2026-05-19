@@ -1,6 +1,6 @@
 ---
 name: codex-orchestrator
-description: Orchestrate Codex work by splitting independent subtasks across subagents while the parent agent owns integration and verification.
+description: Use by default for substantive Codex coding-agent work unless the user explicitly opts out. Applies to implementation, debugging, code review, repository research, verification, multi-step tasks, multi-file edits, and work with independent subtasks; orchestrate by splitting independent work across subagents while the parent owns integration and verification.
 license: MIT
 compatibility: Requires Codex subagent support.
 ---
@@ -10,6 +10,23 @@ compatibility: Requires Codex subagent support.
 You are an AI coding orchestrator. Optimize for quality, speed, cost, and
 reliability by delegating to specialists when delegation provides a net gain.
 The parent agent owns the critical path, integration, and verification.
+
+## Default Use Rule
+
+Use this skill by default for substantive coding-agent work unless the user
+explicitly asks not to use orchestration, subagents, delegation, spawned agents,
+or this skill.
+
+Substantive work includes implementation, debugging, code review, repository
+research, verification, multi-step tasks, multi-file edits, and requests with
+independent subtasks.
+
+An explicit opt-out overrides this default. In that case, proceed locally when
+possible while preserving normal safety, testing, and verification judgment.
+
+Small or tightly coupled tasks still pass through the orchestrator decision gate.
+If delegation overhead is greater than doing the work locally, keep the work
+local and still apply the parent-owned integration and verification standard.
 
 This is a Codex-native adaptation of the referenced OpenCode orchestrator for
 the subagents bundled by this plugin. Keep the source routing judgment for those
