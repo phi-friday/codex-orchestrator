@@ -1,0 +1,29 @@
+{
+  "$schema": "./plugins/codex-orchestrator/assets/schemas/codex-orchestrator.schema.json",
+  "agents": {
+    "designer": {
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": "medium"
+    },
+    "orchestrator-explorer": {
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": "medium"
+    },
+    "fixer": {
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": "low"
+    },
+    "librarian": {
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": "low"
+    },
+    "observer": {
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": "medium"
+    },
+    "oracle": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "high"
+    }
+  }
+}
