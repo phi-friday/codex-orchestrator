@@ -11,8 +11,9 @@
 const ORCHESTRATOR_CONTEXT = [
   "Codex Orchestrator is mandatory-by-default for this request.",
   "Use the codex-orchestrator workflow before acting unless the user explicitly opted out.",
-  "Identify the critical path, check whether independent subtasks should be delegated, and keep parent-owned integration and verification.",
-  "If delegation overhead exceeds value, do the work locally but still apply the orchestration decision gate and completion standard.",
+  "Spawn suitable available subagents by default for applicable substantive work.",
+  "Only stay local when an allowed exception applies: explicit opt-out, unavailable matching subagents, trivial single-command checks, exact known-file lookups, or immediately blocking critical-path work with no independent lane.",
+  "Keep parent-owned integration and verification, and still apply the orchestration decision gate and completion standard.",
 ].join(" ");
 
 const USER_PROMPT_HOOK = "UserPromptSubmit";
@@ -20,10 +21,11 @@ const STOP_HOOK = "Stop";
 
 const APPLICABLE_PATTERNS = [
   /\b(add|build|create|implement|fix|debug|repair|refactor|change|update|modify)\b/iu,
-  /\b(test|tests|typecheck|lint|verify|verification|review|code review)\b/iu,
-  /\b(repo|repository|codebase|file|files|module|package|plugin|skill|hook|hooks)\b/iu,
-  /\b(task|tasks|multi[- ]?step|multi[- ]?file|subtask|parallel|investigate|research)\b/iu,
-  /\b(open ?spec|proposal|design|spec|implementation)\b/iu,
+  /\b(test|tests|typecheck|lint|verify|verification|code review)\b/iu,
+  /\b(repo|repository|codebase|module|package|plugin|skill|hook|hooks)\b/iu,
+  /\b(task|tasks|multi[- ]?step|multi[- ]?file|subtask|implementation|debugging)\b/iu,
+  /\b(open ?spec|proposal|propose|design|spec|planning|plan|analysis|review|investigate|research|investigation)\b.*\b(repo|repository|codebase|code|coding|implementation|debugging|plugin|skill|hook|hooks|module|package|file|files|multi[- ]?file)\b/iu,
+  /\b(repo|repository|codebase|code|coding|implementation|debugging|plugin|skill|hook|hooks|module|package|file|files|multi[- ]?file)\b.*\b(open ?spec|proposal|propose|design|spec|planning|plan|analysis|review|investigate|research|investigation)\b/iu,
   /(구현|추가|생성|만들|수정|변경|고치|해결|디버그|리팩터|리팩토|검토|리뷰|조사|분석|확인|검증|테스트|타입체크|린트|저장소|코드베이스|파일|모듈|패키지|플러그인|스킬|후크|훅|작업)/u,
 ];
 
@@ -38,8 +40,9 @@ const OPT_OUT_PATTERNS = [
 ];
 
 const COMPLETION_PATTERNS = [
-  /\b(done|complete|completed|implemented|fixed|finished|all set)\b/iu,
+  /\b(complete|completed|implemented|fixed|finished)\b/iu,
   /\bI (updated|added|changed|implemented|fixed|created)\b/iu,
+  /(완료|구현|수정|변경|고쳤|처리)/u,
 ];
 
 const VERIFICATION_PATTERNS = [
@@ -49,12 +52,36 @@ const VERIFICATION_PATTERNS = [
   /(테스트|타입체크|린트|검증|확인|실행|통과|실패|건너뜀|스킵)/u,
 ];
 
+const DELEGATION_PATTERNS = [
+  /\b(spawn(?:ed)?|delegat(?:e|ed|ing)|subagent(?:s)?|sub-agent(?:s)?|orchestrator-explorer|librarian|oracle|designer|fixer|observer)\b/iu,
+  /\b(parent-owned integration|parent owned integration)\b/iu,
+  /(서브 ?에이전트|하위 ?에이전트|위임|분담|스폰|통합)/u,
+];
+
+const LOCAL_ONLY_REASON_PATTERNS = [
+  /\b(explicit opt-out|opt out|opt-out)\b/iu,
+  /\b(unavailable matching subagents?|unavailable specialists?)\b/iu,
+  /\b(trivial single-command checks?|single-command checks?|exact known-file lookups?|exact known file lookups?)\b/iu,
+  /\b(immediately blocking critical-path work|blocking critical-path work|no independent lane)\b/iu,
+  /\b(already had the exact required context|already-known exact context|already known exact context)\b/iu,
+  /(명시적 옵트아웃|서브 ?에이전트.*사용 ?불가|단일 명령|정확한 파일 조회|독립.*작업.*없)/u,
+];
+
 /**
  * @param {unknown} value
  * @returns {string}
  */
 function textFrom(value) {
   return typeof value === "string" ? value : "";
+}
+
+/**
+ * @param {string} text
+ * @param {RegExp[]} patterns
+ * @returns {boolean}
+ */
+function matchesAny(text, patterns) {
+  return patterns.some(pattern => pattern.test(text));
 }
 
 /**
@@ -78,7 +105,7 @@ export function isApplicablePrompt(prompt) {
     return false;
   }
 
-  return APPLICABLE_PATTERNS.some(pattern => pattern.test(text));
+  return matchesAny(text, APPLICABLE_PATTERNS);
 }
 
 /**
@@ -115,10 +142,15 @@ export function shouldContinueAtStop(input) {
     return false;
   }
 
-  const claims_completion = COMPLETION_PATTERNS.some(pattern => pattern.test(message));
-  const mentions_verification = VERIFICATION_PATTERNS.some(pattern => pattern.test(message));
+  const claims_completion = matchesAny(message, COMPLETION_PATTERNS);
+  const mentions_verification = matchesAny(message, VERIFICATION_PATTERNS);
+  const mentions_delegation = matchesAny(message, DELEGATION_PATTERNS);
+  const mentions_allowed_local_reason = matchesAny(message, LOCAL_ONLY_REASON_PATTERNS);
 
-  return claims_completion && !mentions_verification;
+  return (
+    claims_completion &&
+    (!mentions_verification || (!mentions_delegation && !mentions_allowed_local_reason))
+  );
 }
 
 /**
@@ -139,7 +171,7 @@ export function buildStopOutput(input) {
   return {
     decision: "block",
     reason:
-      "Apply the codex-orchestrator completion standard: confirm delegation was considered, integrate any results, and report verification before finishing.",
+      "Apply the codex-orchestrator completion standard: include delegation evidence or a concrete allowed local-only reason, then report verification before finishing.",
   };
 }
 

@@ -21,7 +21,8 @@
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "defaultPrompt": [
-      "Use $codex-orchestrator to split this work across subagents.",
+      "Use $codex-orchestrator for substantive coding-agent work unless the user explicitly opts out.",
+      "Spawn suitable available subagents by default for repository investigation, review, multi-step work, multi-file edits, implementation lanes, and verification lanes.",
       "Use $install-subagents to install the bundled subagent definitions."
     ],
     "brandColor": "#2563EB"

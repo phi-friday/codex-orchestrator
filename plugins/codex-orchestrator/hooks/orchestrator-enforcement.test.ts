@@ -53,6 +53,8 @@ describe("orchestrator hook prompt decisions", (): void => {
     expect(isApplicablePrompt("Implement the hook support and add tests.")).toBe(true);
     expect(isApplicablePrompt("Debug the failing repository tests.")).toBe(true);
     expect(isApplicablePrompt("Review this codebase and verify the plugin behavior.")).toBe(true);
+    expect(isApplicablePrompt("Draft a proposal and design for the new hook guard.")).toBe(true);
+    expect(isApplicablePrompt("Investigate the repository and plan the next steps.")).toBe(true);
     expect(isApplicablePrompt("이 저장소의 타입체크 에러를 수정하고 테스트를 추가하세요.")).toBe(
       true
     );
@@ -69,12 +71,14 @@ describe("orchestrator hook prompt decisions", (): void => {
 
   test("ignores non-coding prompts", (): void => {
     expect(isApplicablePrompt("What is the capital of France?")).toBe(false);
+    expect(isApplicablePrompt("Plan my birthday party.")).toBe(false);
+    expect(isApplicablePrompt("Design a workout plan.")).toBe(false);
   });
 
   test("builds UserPromptSubmit additional context for applicable prompts", (): void => {
     const output = buildUserPromptSubmitOutput({
       hook_event_name: "UserPromptSubmit",
-      prompt: "Add tests for this plugin hook.",
+      prompt: "Add tests for this plugin hook and prepare a design note.",
     });
 
     expect(output).toEqual({
@@ -83,6 +87,27 @@ describe("orchestrator hook prompt decisions", (): void => {
         additionalContext: expect.stringContaining("codex-orchestrator workflow"),
       },
     });
+  });
+
+  test("adds strengthened local-only exception guidance to UserPromptSubmit context", (): void => {
+    const output = buildUserPromptSubmitOutput({
+      hook_event_name: "UserPromptSubmit",
+      prompt: "Review the repository and propose a hook change.",
+    });
+
+    expect(output?.hookSpecificOutput.additionalContext).toContain(
+      "Spawn suitable available subagents by default"
+    );
+    expect(output?.hookSpecificOutput.additionalContext).toContain("explicit opt-out");
+    expect(output?.hookSpecificOutput.additionalContext).toContain(
+      "unavailable matching subagents"
+    );
+    expect(output?.hookSpecificOutput.additionalContext).toContain(
+      "exact known-file lookups"
+    );
+    expect(output?.hookSpecificOutput.additionalContext).toContain(
+      "immediately blocking critical-path work"
+    );
   });
 
   test("does not build UserPromptSubmit context for opt-out prompts", (): void => {
@@ -120,7 +145,8 @@ describe("orchestrator hook stop decisions", (): void => {
     const output = buildStopOutput({
       hook_event_name: "Stop",
       stop_hook_active: false,
-      last_assistant_message: "Implemented the hook and ran bun run test.",
+      last_assistant_message:
+        "Implemented the hook with delegated subagent analysis and ran bun run test.",
     });
 
     expect(output).toEqual({
@@ -128,11 +154,75 @@ describe("orchestrator hook stop decisions", (): void => {
     });
   });
 
-  test("allows Korean completion messages with verification evidence", (): void => {
+  test("allows completion messages with local-only verification reason", (): void => {
     const output = buildStopOutput({
       hook_event_name: "Stop",
       stop_hook_active: false,
-      last_assistant_message: "수정했고 타입체크를 실행했습니다.",
+      last_assistant_message:
+        "Completed locally because the task was an exact known-file lookup, and I verified the result with bun run test.",
+    });
+
+    expect(output).toEqual({
+      continue: true,
+    });
+  });
+
+  test("allows completion messages with already-known exact context reason", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed locally because I already had the exact required context, and verified the result.",
+    });
+
+    expect(output).toEqual({
+      continue: true,
+    });
+  });
+
+  test("blocks completion claims without delegation evidence or local-only reason", (): void => {
+    expect(
+      buildStopOutput({
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        last_assistant_message: "Implemented the hook. Done.",
+      })
+    ).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("delegation evidence"),
+    });
+  });
+
+  test("allows generic simple completion messages", (): void => {
+    expect(
+      buildStopOutput({
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        last_assistant_message: "Done.",
+      })
+    ).toEqual({
+      continue: true,
+    });
+  });
+
+  test("blocks verified completion claims without delegation evidence or local-only reason", (): void => {
+    expect(
+      buildStopOutput({
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        last_assistant_message: "Implemented the hook and ran bun run test.",
+      })
+    ).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("delegation evidence"),
+    });
+  });
+
+  test("allows Korean completion messages with delegation and verification evidence", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: "수정했고 서브에이전트 결과를 통합했고 타입체크를 실행했습니다.",
     });
 
     expect(output).toEqual({
