@@ -67,6 +67,7 @@ test("keeps only source-oriented reference entries", (): void => {
     "package.json",
     "LICENSE",
     "AGENTS.md",
+    "README.md",
     "codemap.md",
   ]);
 });
