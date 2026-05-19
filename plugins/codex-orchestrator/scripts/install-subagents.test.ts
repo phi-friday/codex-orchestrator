@@ -33,6 +33,13 @@ type ExecFileError = Error & {
 const execFileAsync = promisify(execFile);
 const NODE_EXECUTABLE = Bun.which("node") ?? "node";
 const SCRIPT_PATH = resolve(import.meta.dirname, "install-subagents.mjs");
+const INSTALL_SUBAGENTS_SKILL_PATH = resolve(
+  import.meta.dirname,
+  "..",
+  "skills",
+  "install-subagents",
+  "SKILL.md"
+);
 const SCHEMA_PATH = resolve(
   import.meta.dirname,
   "..",
@@ -552,6 +559,24 @@ test("dry-run reports planned writes and removals without modifying files", asyn
   } finally {
     await fixture.cleanup();
   }
+});
+
+test("install-subagents skill requires interview, dry-run review, and confirmation", async (): Promise<void> => {
+  const skill = await readFile(INSTALL_SUBAGENTS_SKILL_PATH, "utf8");
+  const normalized_skill = skill.replaceAll(/\s+/gu, " ");
+
+  expect(normalized_skill).toContain("Interview before planning");
+  expect(normalized_skill).toContain("configuration sources");
+  expect(normalized_skill).toContain("target directory choices");
+  expect(normalized_skill).toContain("existing matching bundled agent files");
+  expect(normalized_skill).toContain("per-agent model choices");
+  expect(normalized_skill).toContain("reasoning effort");
+  expect(normalized_skill).toContain("optional override");
+  expect(normalized_skill).toContain("planned overwrites");
+  expect(normalized_skill).toContain("planned removals");
+  expect(normalized_skill).toContain("cannot selectively skip a planned write");
+  expect(normalized_skill).toContain("final user confirmation");
+  expect(normalized_skill).toContain("must not run the non-dry-run installer");
 });
 
 test("discovers bundled TOML templates and includes Codex custom agent fields", async (): Promise<void> => {

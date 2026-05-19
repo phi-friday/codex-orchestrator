@@ -137,7 +137,41 @@ node plugins/codex-orchestrator/scripts/install-subagents.mjs \
 
 When using this skill as an agent:
 
-1. Ensure a global, repository-local, or explicit JSON config exists.
-2. Use `--dry-run` first when planned removals or the target directory are uncertain.
-3. Use `--target-dir` whenever passing `--config`.
-4. Run the installer and report installed or removed bundled TOML filenames.
+1. Interview before planning.
+   - Identify available configuration sources: global
+     `~/.codex/codex-orchestrator.json`, repository-local
+     `<cwd>/codex-orchestrator.json`, and any explicit config path the user
+     wants to provide.
+   - Present target directory choices, including `~/.codex/agents`,
+     `<cwd>/.codex/agents`, and any user-specified directory.
+   - Inspect the selected target directory when it exists and call out existing
+     matching bundled agent files for `designer`, `orchestrator-explorer`,
+     `fixer`, `librarian`, `observer`, and `oracle`.
+   - Gather enabled agents, disabled agents, and per-agent model choices from
+     the user or the selected config files before any non-dry-run install.
+   - Treat reasoning effort as an optional override. Use existing config
+     inheritance or omitted values unless the user explicitly asks to set or
+     remove `model_reasoning_effort`.
+2. Resolve the command plan.
+   - Ensure a global, repository-local, or explicit JSON config exists.
+   - Use `--target-dir` whenever passing `--config`.
+   - Preserve the CLI contract: it is non-interactive, and the agent is
+     responsible for user questions and confirmation.
+3. Run `--dry-run` after selecting config and target choices.
+   - Summarize the resolved configuration source, target directory, enabled
+     agents, disabled agents, planned writes, planned overwrites, planned
+     removals, and files that will be preserved.
+   - Treat any planned write whose target file already exists as a planned
+     overwrite. Explain that the current CLI cannot selectively skip a planned
+     write; if the user does not approve, adjust the plan by changing config or
+     target directory, or stop.
+   - Treat any disabled bundled agent file that exists in the target directory
+     as a planned removal. If the user does not approve, adjust the plan by
+     changing config or target directory, or stop.
+4. Get final user confirmation.
+   - Ask for final user confirmation after the dry-run summary and before
+     running the matching non-dry-run installer command.
+   - If the user rejects, changes, or does not confirm the dry-run summary, the
+     agent must not run the non-dry-run installer.
+5. Run the installer only after confirmation, then report installed and removed
+   bundled TOML filenames.
