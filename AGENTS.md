@@ -6,7 +6,7 @@ Repository guidance for agentic coding agents.
 
 - This repository packages a Codex Orchestrator plugin, not a conventional app.
 - The plugin goal is to help a parent Codex agent split independent work across subagents while the parent owns integration and verification.
-- The plugin also ships an installer skill/script for rendering bundled subagent YAML templates from JSON configuration.
+- The plugin also ships an installer skill/script for rendering bundled Codex custom-agent TOML templates from JSON configuration.
 - Bun is used for local dependency management and verification, but repo skills and helper scripts should assume Node.js runtime semantics.
 - There is currently no `src/` application entrypoint. `package.json` metadata may still contain Bun init leftovers such as `module: "index.ts"`.
 - Dependencies are locked by `bun.lock`; do not add npm/yarn/pnpm lockfiles.
@@ -23,6 +23,8 @@ bun run test     # bun test
 bun run typecheck # tsc
 bun run lint     # oxlint --config oxlint.config.ts
 bun run format   # oxfmt --config oxfmt.config.ts; formats TS/JS, ignores Markdown
+bun run reference:oh-my-opencode-slim
+                 # refresh the vendored reference snapshot version from package.json
 ```
 
 ## Test Conventions
@@ -53,12 +55,12 @@ bun run format   # oxfmt --config oxfmt.config.ts; formats TS/JS, ignores Markdo
 | `plugins/codex-orchestrator/.codex-plugin/plugin.json` | Codex plugin metadata and skill registration source |
 | `plugins/codex-orchestrator/skills/codex-orchestrator/SKILL.md` | Main orchestration skill; defines delegation rules and completion standard |
 | `plugins/codex-orchestrator/skills/install-subagents/SKILL.md` | Installer skill; documents Node-based installation flow |
-| `plugins/codex-orchestrator/assets/subagents/*.yaml` | Subagent templates containing `{{MODEL}}` placeholders |
-| `plugins/codex-orchestrator/scripts/install-subagents.mjs` | Node CLI that renders YAML templates and writes subagent definitions |
+| `plugins/codex-orchestrator/assets/subagents/*.toml` | Bundled Codex custom-agent templates containing installer placeholders |
+| `plugins/codex-orchestrator/scripts/install-subagents.mjs` | Node CLI that renders TOML templates and writes subagent definitions |
 | `plugins/codex-orchestrator/scripts/install-subagents.test.ts` | Bun TypeScript tests; keeps Node subprocess coverage for the installer CLI |
-| `package.json` | Only `test`, `typecheck`, `lint`, and `format` scripts are defined |
+| `package.json` | Script source of truth for test, typecheck, lint, format, and reference refresh commands |
 | `tsconfig.json` | TypeScript checks run via `bun run typecheck` |
 | `oxlint.config.ts` | Lint source of truth; not ESLint |
 | `oxfmt.config.ts` | Format source of truth; not Prettier |
-| `.opencode/commands/opsx-explore.md` | Explore workflow is read/search/thinking only, no edits |
-| `.opencode/skills/openspec-*` | OpenSpec change workflow lives here |
+| `.codex/agents/*.toml` | Repository-local installed custom agents rendered from bundled templates |
+| `.codex/skills/openspec-*` | OpenSpec change workflow lives here |
