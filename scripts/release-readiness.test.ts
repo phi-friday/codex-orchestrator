@@ -4,7 +4,6 @@ import { expect, test } from "bun:test";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const PACKAGE_JSON_PATH = resolve(REPO_ROOT, "package.json");
-const RELEASE_WORKFLOW_PATH = resolve(REPO_ROOT, ".github/workflows/release-verification.yml");
 const RUNTIME_ENTRY_FIELDS = ["main", "module", "exports", "bin"] as const;
 
 type RuntimeEntryField = (typeof RUNTIME_ENTRY_FIELDS)[number];
@@ -50,21 +49,19 @@ test("documented package scripts do not depend on jq", (): void => {
   expect(Object.entries(scripts).filter(([_name, command]) => /\bjq\b/u.test(command))).toEqual([]);
 });
 
-test("release verification workflow runs the public release command set", (): void => {
-  const workflow = readFileSync(RELEASE_WORKFLOW_PATH, "utf8");
-
-  expect(workflow).toContain("bun run test");
-  expect(workflow).toContain("bun run typecheck");
-  expect(workflow).toContain("bun run lint");
-  expect(workflow).toContain("bun run version:check");
-});
-
-test("marketplace smoke command includes explicit target directory", (): void => {
+test("README documents the public release command set", (): void => {
   const readme = readFileSync(resolve(REPO_ROOT, "README.md"), "utf8");
 
+  expect(readme).toContain("bun run test");
+  expect(readme).toContain("bun run typecheck");
+  expect(readme).toContain("bun run lint");
+  expect(readme).toContain("bun run version:check");
+});
+
+test("marketplace documentation describes catalog and installed plugin paths", (): void => {
+  const readme = readFileSync(resolve(REPO_ROOT, "README.md"), "utf8");
+
+  expect(readme).toContain(".agents/plugins/marketplace.json");
+  expect(readme).toContain("./plugins/codex-orchestrator");
   expect(readme).toContain("hooks/hooks.json");
-  expect(readme).toContain("node scripts/install-subagents.mjs");
-  expect(readme).toContain("--config /tmp/codex-orchestrator-smoke.json");
-  expect(readme).toContain("--target-dir /tmp/codex-orchestrator-smoke-agents");
-  expect(readme).not.toContain("node plugins/codex-orchestrator/scripts/install-subagents.mjs");
 });
