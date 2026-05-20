@@ -31,11 +31,12 @@ An explicit opt-out overrides this default. In that case, proceed locally when
 possible while preserving normal safety, testing, and verification judgment.
 
 Local-only execution is an exception, not an equal default path. It is allowed
-when the user explicitly opts out, no suitable specialist or fallback role is
-available, the task is a trivial single command, the task is an exact known-file
-lookup, the work is an immediately blocking critical-path step with no
-independent lane, or the parent already has the exact required context. State the
-reason briefly when completing applicable work without spawning a subagent.
+only when the user explicitly opts out, no suitable specialist or fallback role
+is available after availability handling, the task is a trivial single-command
+check, the task is an exact known-file lookup with no synthesis, or the work is
+an immediately blocking critical-path step with no independent lane. State the
+reason briefly when completing applicable work without spawning a subagent, and
+name the allowed exception that justifies staying local.
 
 This is a Codex-native adaptation of the referenced OpenCode orchestrator for
 the subagents bundled by this plugin. Keep the source routing judgment for those
@@ -116,14 +117,18 @@ content needed for immediate editing stays with the parent.
 ### Librarian
 
 Preferred route: `librarian`. Fallback: configured documentation tools or parent
-research.
+research only when `librarian` is unavailable or an allowed local-only exception
+applies.
 
 Role: authoritative source for current library docs, APIs, examples, and
 version-specific behavior.
 
-Default routing: use librarian when current external knowledge matters. It
-should outperform the parent at finding official, version-specific docs and
-examples, but should not answer ordinary programming questions.
+Default routing: use librarian when current external knowledge matters, including
+when the parent would use Context7, web, GitHub, official docs, release notes,
+migration docs, SDK/framework/cloud/AI-tool docs, or library internals for
+substantive work. It should outperform the parent at finding official,
+version-specific docs and examples, but should not answer ordinary programming
+questions.
 
 Delegate by default when:
 
@@ -134,13 +139,17 @@ Delegate by default when:
 - Version-specific behavior, advanced features, edge cases, or nuanced best
   practices matter.
 - You are unfamiliar with the library and wrong assumptions would be costly.
+- The parent would otherwise use current external knowledge sources for
+  substantive work.
 
 Do not delegate when:
 
 - The answer is stable general programming knowledge.
-- The API is simple and you are already confident.
 - The information is already in the conversation or local repo.
 - The question is about language built-ins rather than library behavior.
+- Confidence, routine nature, speed, convenience, perceived simplicity, "I can
+  do it myself", "API is simple", and "parent already knows enough" are not
+  valid exceptions.
 
 Rule of thumb: "How does this library work?" goes to librarian. "How does
 programming work?" stays with the parent.
@@ -153,8 +162,9 @@ Role: strategic advisor for high-stakes decisions, persistent problems, complex
 debugging, code review, simplification, and maintainability.
 
 Default routing: use oracle when judgment quality matters more than raw speed.
-It is not the path for trivial execution, but it is the expected path for
-strategic review and high-impact maintainability questions.
+It is the expected path for non-trivial plans, patches, OpenSpec proposal or
+design work, debugging hypotheses, architecture tradeoffs, and orchestration,
+hook, schema, installer, or prompt changes.
 
 Delegate by default when:
 
@@ -166,17 +176,24 @@ Delegate by default when:
 - The cost of a wrong decision is high.
 - A workflow calls for a reviewer subagent.
 - Code needs code review, simplification pressure, or YAGNI scrutiny.
+- The work is a non-trivial plan or patch.
+- The work touches OpenSpec proposal or design artifacts.
+- The work changes orchestration, hooks, schemas, installers, or prompts.
 
 Do not delegate when:
 
-- This is a routine decision you can make confidently.
 - This is the first reasonable bug-fix attempt.
 - The tradeoff is straightforward.
 - The task is tactical "how" rather than strategic "should".
-- Speed matters more than extra confidence and quick local research can answer.
+- Confidence, routine nature, speed, convenience, perceived simplicity, "I can
+  do it myself", and "parent already knows enough" are not valid exceptions.
 
 Rule of thumb: senior architect, hard debugger, reviewer, or simplifier goes to
-oracle; routine execution stays with the parent or fixer.
+oracle; purely tactical execution stays with the parent or fixer when no review
+or judgment lane exists.
+
+Routing gate: uncertainty is a delegation trigger. If you cannot name an allowed
+local-only exception, route the work instead of staying local.
 
 ### Designer
 
@@ -311,7 +328,7 @@ Subagent-first rules:
 - Keep only narrow work local: explicit opt-out, unavailable matching
   specialist after the session-scoped install or refresh opportunity, trivial
   single command, exact known-file lookup, immediately blocking critical-path
-  step with no independent lane, or already-known exact context.
+  step with no independent lane.
 
 ### 4. Split and Parallelize
 

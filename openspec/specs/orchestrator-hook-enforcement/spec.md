@@ -11,11 +11,15 @@ expected path for applicable substantive work.
 
 #### Scenario: Applicable repository prompt receives strengthened context
 - **WHEN** a UserPromptSubmit hook receives a prompt for implementation, debugging, review, repository investigation, planning, design, proposal work, verification, multi-file edits, or multi-step coding work
-- **THEN** the emitted additional context MUST instruct Codex to spawn suitable available subagents by default unless the user explicitly opted out or an allowed local-only exception applies.
+- **THEN** the emitted additional context MUST instruct Codex to spawn suitable available subagents by default unless the user explicitly opted out or an allowed objective local-only exception applies.
 
 #### Scenario: Local-only exception is required
 - **WHEN** the emitted additional context describes local-only execution
 - **THEN** it MUST limit local-only execution to explicit opt-out, unavailable matching subagents, trivial single-command checks, exact known-file lookups, or immediately blocking critical-path work with no independent lane.
+
+#### Scenario: Route-specific prompt context is needed
+- **WHEN** a UserPromptSubmit hook receives a detectable documentation/network research or review/judgment prompt
+- **THEN** the emitted additional context MUST include route-specific guidance for `librarian` or `oracle` in addition to the generic subagent-first context.
 
 ### Requirement: Delegation evidence completion guard
 The Stop hook SHALL guard against completion claims for applicable work that
@@ -25,6 +29,11 @@ omit both subagent usage and an allowed local-only reason.
 - **WHEN** a Stop hook receives a final assistant message that appears to claim completion for applicable substantive work without mentioning delegated subagents, parent-owned integration, or an allowed local-only reason
 - **THEN** it MUST request continuation with a concise prompt to apply the subagent-first orchestration standard.
 
+#### Scenario: Completion uses subjective local-only reason
+- **WHEN** a Stop hook receives a final assistant message that appears to claim completion for applicable substantive work without delegation
+- **AND** the message justifies local-only execution with confidence, routine nature, speed, convenience, perceived simplicity, "I can do it myself", "API is simple", or "parent already knows enough"
+- **THEN** it MUST request continuation with a concise prompt to apply the closed-list local-only exception standard.
+
 #### Scenario: Completion states allowed local-only reason
 - **WHEN** a Stop hook receives a final assistant message that claims completion and states a concrete allowed local-only reason with verification evidence
 - **THEN** it MUST allow the turn to finish.
@@ -32,6 +41,16 @@ omit both subagent usage and an allowed local-only reason.
 #### Scenario: Completion states delegation and verification
 - **WHEN** a Stop hook receives a final assistant message that claims completion and reports delegated subagent results plus parent-owned verification
 - **THEN** it MUST allow the turn to finish.
+
+#### Scenario: Documentation research lacks librarian evidence
+- **WHEN** a Stop hook receives a final assistant message that claims completion and mentions using documentation, official docs, Context7, web search, GitHub search, release notes, migration guides, SDKs, frameworks, cloud services, AI tooling, library internals, current external knowledge, network research, or fetching external sources
+- **AND** the message does not mention `librarian` delegation or an allowed objective local-only reason
+- **THEN** it MUST request continuation with a concise prompt to report `librarian` evidence or apply the closed-list local-only exception standard.
+
+#### Scenario: Review or judgment lacks oracle evidence
+- **WHEN** a Stop hook receives a final assistant message that claims completion and mentions code review, design critique, architecture tradeoffs, debugging hypotheses, simplification, maintainability review, OpenSpec proposal review, orchestration rules, hooks, schemas, installers, skill prompts, or subagent prompts
+- **AND** the message does not mention `oracle` delegation or an allowed objective local-only reason
+- **THEN** it MUST request continuation with a concise prompt to report `oracle` evidence or apply the closed-list local-only exception standard.
 
 ### Requirement: Plugin hook registration
 The plugin SHALL register bundled lifecycle hooks that can inject orchestrator

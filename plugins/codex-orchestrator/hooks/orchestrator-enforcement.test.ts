@@ -68,6 +68,12 @@ describe("orchestrator hook prompt decisions", (): void => {
     expect(isApplicablePrompt("Review this codebase and verify the plugin behavior.")).toBe(true);
     expect(isApplicablePrompt("Draft a proposal and design for the new hook guard.")).toBe(true);
     expect(isApplicablePrompt("Investigate the repository and plan the next steps.")).toBe(true);
+    expect(isApplicablePrompt("Use Context7 to check the official docs for this SDK.")).toBe(
+      true
+    );
+    expect(isApplicablePrompt("Review the OpenSpec proposal for this hook change.")).toBe(
+      true
+    );
     expect(isApplicablePrompt("이 저장소의 타입체크 에러를 수정하고 테스트를 추가하세요.")).toBe(
       true
     );
@@ -125,7 +131,51 @@ describe("orchestrator hook prompt decisions", (): void => {
       "Codex-managed subagent threads"
     );
   });
+});
 
+describe("orchestrator hook route prompt context", (): void => {
+  test("adds librarian context for documentation and network research prompts", (): void => {
+    const output = buildUserPromptSubmitOutput({
+      hook_event_name: "UserPromptSubmit",
+      prompt:
+        "Use Context7 and official docs to research migration guide behavior for this SDK.",
+    });
+
+    expect(output?.hookSpecificOutput.additionalContext).toContain("librarian");
+    expect(output?.hookSpecificOutput.additionalContext).toContain(
+      "current external knowledge"
+    );
+    expect(output?.hookSpecificOutput.additionalContext).toContain(
+      "Parent-local documentation research requires an allowed objective local-only reason"
+    );
+  });
+
+  test("adds oracle context for OpenSpec and review prompts", (): void => {
+    const prompts = [
+      "Review the OpenSpec proposal and design critique.",
+      "Assess the debugging hypothesis and architecture tradeoff.",
+      "Review orchestration rules and hook schema behavior.",
+      "Review installer behavior, skill prompt wording, and subagent prompts.",
+    ];
+
+    for (const prompt of prompts) {
+      const output = buildUserPromptSubmitOutput({
+        hook_event_name: "UserPromptSubmit",
+        prompt,
+      });
+
+      expect(output?.hookSpecificOutput.additionalContext).toContain("oracle");
+      expect(output?.hookSpecificOutput.additionalContext).toContain(
+        "default read-only review or judgment route"
+      );
+      expect(output?.hookSpecificOutput.additionalContext).toContain(
+        "Skipping oracle requires an allowed objective local-only reason"
+      );
+    }
+  });
+});
+
+describe("orchestrator hook prompt output exclusions", (): void => {
   test("does not build UserPromptSubmit context for opt-out prompts", (): void => {
     const output = buildUserPromptSubmitOutput({
       hook_event_name: "UserPromptSubmit",
@@ -256,12 +306,111 @@ describe("orchestrator hook stop local-only standards", (): void => {
     });
   });
 
-  test("allows completion messages with already-known exact context reason", (): void => {
+  test("blocks completion messages with already-known exact context reason", (): void => {
     const output = buildStopOutput({
       hook_event_name: "Stop",
       stop_hook_active: false,
       last_assistant_message:
         "Completed locally because I already had the exact required context, and verified the result.",
+    });
+
+    expect(output).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("closed-list local-only exception standard"),
+    });
+  });
+
+  test("blocks completion messages with subjective local-only reasons", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed locally because I was confident this routine simple API change was faster, and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("confidence"),
+    });
+    expect(expectBlockedReason(output)).toContain("not valid reasons to skip subagents");
+  });
+
+  test("allows delegated completion that mentions subjective words descriptively", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed a simple change with oracle delegation, closed the Codex-managed subagent thread, and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      continue: true,
+    });
+  });
+});
+
+describe("orchestrator hook route-specific stop standards", (): void => {
+  test("blocks documentation research completion without librarian evidence", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed the official docs and Context7 research for the SDK migration and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("librarian routing standard"),
+    });
+  });
+
+  test("allows documentation research completion with librarian evidence", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed the official docs and Context7 research with librarian delegation, closed the Codex-managed subagent thread, and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      continue: true,
+    });
+  });
+
+  test("blocks review completion without oracle evidence", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed the code review and design critique for the hook schema and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("oracle routing standard"),
+    });
+  });
+
+  test("blocks singular debugging hypothesis completion without oracle evidence", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed the debugging hypothesis review with generic subagent delegation, closed the Codex-managed subagent thread, and ran bun run test.",
+    });
+
+    expect(output).toEqual({
+      decision: "block",
+      reason: expect.stringContaining("oracle routing standard"),
+    });
+  });
+
+  test("allows review completion with oracle evidence", (): void => {
+    const output = buildStopOutput({
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message:
+        "Completed the code review and design critique with oracle delegation, closed the Codex-managed subagent thread, and ran bun run test.",
     });
 
     expect(output).toEqual({
