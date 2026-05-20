@@ -60,11 +60,6 @@ installer safety, hook path safety, permissions, metadata, and generated docs.
 - **THEN** it MUST verify that bundled hook commands safely delimit
   `${PLUGIN_ROOT}` script paths.
 
-#### Scenario: Librarian sandbox is tested
-- **WHEN** the test suite runs
-- **THEN** it MUST verify that the bundled `librarian` template defaults to a
-  read-only filesystem sandbox.
-
 #### Scenario: Public metadata is tested
 - **WHEN** the test suite runs
 - **THEN** it MUST verify that root package metadata does not point runtime
@@ -73,4 +68,3 @@ installer safety, hook path safety, permissions, metadata, and generated docs.
 #### Scenario: Release check includes generated docs
 - **WHEN** release verification is documented or automated
 - **THEN** it MUST include a test or check that `bun run version:check` passes.
-
