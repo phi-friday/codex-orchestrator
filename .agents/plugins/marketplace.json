@@ -1,5 +1,6 @@
 {
   "name": "codex-orchestrator",
+  "repository": "https://github.com/phi-friday/codex-orchestrator",
   "interface": {
     "displayName": "Codex Orchestrator"
   },
