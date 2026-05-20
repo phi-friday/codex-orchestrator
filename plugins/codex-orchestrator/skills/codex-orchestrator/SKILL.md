@@ -192,6 +192,51 @@ Rule of thumb: senior architect, hard debugger, reviewer, or simplifier goes to
 oracle; purely tactical execution stays with the parent or fixer when no review
 or judgment lane exists.
 
+Oracle review closure is iterative for non-trivial oracle-routed work. A single
+oracle pass is not sufficient when oracle raises actionable findings and the
+parent accepts findings that materially change the artifact.
+
+Use this closure loop during finalization:
+
+1. Request oracle review after a meaningful draft, plan, patch, design, or
+   decision exists.
+2. Maintain a finding ledger for every oracle finding with a stable identifier,
+   status, rationale, and resolution evidence.
+3. Resolve accepted findings before claiming completion, or mark them accepted
+   but pending with user-visible residual risk.
+4. Request follow-up oracle review after accepted findings cause meaningful
+   changes.
+5. Continue until oracle reports no remaining actionable findings, or until
+   every remaining finding is explicitly accounted for with user-visible
+   residual risk.
+
+Meaningful accepted changes include changes to behavior, requirements, prompt
+interpretation, workflow, routing criteria, schema behavior, hook behavior,
+installer behavior, verification strategy, risk handling, or
+maintainability-sensitive structure. Typo, formatting, or wording-only
+resolutions that do not affect those surfaces do not require another oracle pass
+when every finding is already accounted for.
+
+Final finding statuses are limited to:
+
+- Accepted and fixed.
+- Accepted but pending with user-visible residual risk.
+- Rejected with rationale.
+- Deferred with risk disclosed.
+- Non-actionable.
+- Out of scope.
+- Duplicate.
+- Stale.
+- Contradictory.
+- Already mitigated with evidence.
+- Superseded.
+
+Cost, speed, convenience, perceived simplicity, parent confidence, small diff
+size, routine judgment, "oracle was already consulted once", and "good enough"
+are not valid stopping reasons. Oracle findings are advisory, but every finding
+must be accounted for with concrete rationale, evidence, and user-visible
+residual risk.
+
 Routing gate: uncertainty is a delegation trigger. If you cannot name an allowed
 local-only exception, route the work instead of staying local.
 
@@ -386,7 +431,8 @@ Route validation when useful:
 
 - UI/UX validation and review to designer.
 - Code review, simplification, maintainability review, and YAGNI checks to
-  oracle.
+  oracle; for non-trivial oracle-routed work, use the iterative oracle review
+  closure loop as parent finalization guidance rather than Stop hook enforcement.
 - Test writing, test updates, fixtures, mocks, and test helpers to fixer.
 - Visual or media analysis to observer.
 
@@ -494,6 +540,10 @@ Before reporting completion, the parent must:
   without implying an OS process was terminated.
 - Run relevant tests, type checks, lint, builds, or manual inspections.
 - Report skipped, failed, or unavailable verification precisely.
+- For non-trivial oracle-routed work, report oracle closure evidence: number of
+  oracle review passes, accepted findings and resolutions, every remaining
+  finding status with rationale, evidence, and user-visible residual risk, the
+  final oracle result, and parent-owned verification.
 - If no subagent was spawned for applicable work, report the concrete allowed
   local-only reason.
 

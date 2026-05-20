@@ -56,7 +56,7 @@ non-trivial oracle-routed work to include oracle closure evidence.
 
 #### Scenario: Parent completes after oracle loop
 - **WHEN** the parent claims completion after using the iterative oracle review loop
-- **THEN** the skill MUST require the final report to include the number of oracle review passes, accepted findings and their resolutions, rejected or non-actionable findings with rationale, the final oracle result, and parent-owned verification.
+- **THEN** the skill MUST require the final report to include the number of oracle review passes, accepted findings and their resolutions, every remaining finding status with rationale, evidence, and user-visible residual risk, the final oracle result, and parent-owned verification.
 
 #### Scenario: Oracle is unavailable
 - **WHEN** oracle-routed work cannot use `oracle` because no suitable oracle specialist or fallback is available in the current Codex session
