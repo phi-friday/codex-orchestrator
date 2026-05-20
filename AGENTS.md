@@ -8,7 +8,7 @@ Repository guidance for agentic coding agents.
 - The plugin goal is to help a parent Codex agent split independent work across subagents while the parent owns integration and verification.
 - The plugin also ships an installer skill/script for rendering bundled Codex custom-agent TOML templates from JSON configuration.
 - Bun is used for local dependency management and verification, but repo skills and helper scripts should assume Node.js runtime semantics.
-- There is currently no `src/` application entrypoint. `package.json` metadata may still contain Bun init leftovers such as `module: "index.ts"`.
+- There is currently no `src/` application entrypoint. `package.json` should not advertise runtime entrypoints unless the referenced files exist.
 - Dependencies are locked by `bun.lock`; do not add npm/yarn/pnpm lockfiles.
 
 ## Commands

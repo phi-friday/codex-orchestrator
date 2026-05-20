@@ -402,7 +402,7 @@ async function readTargetState(file_path) {
   try {
     const content = await readFile(file_path, "utf8");
 
-    return content.includes(MANAGED_MARKER) ? "managed" : "unmanaged";
+    return content.startsWith(`${MANAGED_MARKER}\n`) ? "managed" : "unmanaged";
   } catch (error) {
     if (
       error instanceof Error &&

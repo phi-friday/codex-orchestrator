@@ -580,7 +580,7 @@ test("installer preserves unmanaged target files and blocks unmanaged overwrites
     await writeFile(join(target_dir, "fixer.toml"), "user fixer", "utf8");
     await writeFile(
       join(target_dir, "orchestrator-explorer.toml"),
-      "# Derived from oh-my-opencode-slim 1.1.1\nuser explorer",
+      `# User-authored note mentioning ${MANAGED_MARKER}\nuser explorer`,
       "utf8"
     );
     await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {

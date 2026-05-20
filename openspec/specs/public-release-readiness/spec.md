@@ -1,7 +1,10 @@
 # public-release-readiness Specification
 
 ## Purpose
-TBD - created by archiving change harden-public-release. Update Purpose after archive.
+Define the release-readiness checks that keep public metadata, documentation,
+marketplace installation guidance, and hook guarantees aligned before publishing
+the Codex Orchestrator plugin.
+
 ## Requirements
 ### Requirement: Public package metadata is internally consistent
 Public repository metadata SHALL NOT advertise runtime entrypoints that do not
@@ -50,4 +53,3 @@ actually observe and enforce.
 - **THEN** it MUST describe Stop hook checks as text-based completion nudges and
   MUST NOT imply independent proof that subagents were closed or verification
   commands were executed.
-
