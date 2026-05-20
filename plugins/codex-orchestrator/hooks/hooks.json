@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${PLUGIN_ROOT}/hooks/orchestrator-hook.mjs",
+            "command": "node \"${PLUGIN_ROOT}/hooks/orchestrator-hook.mjs\"",
             "statusMessage": "Applying Codex Orchestrator default"
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${PLUGIN_ROOT}/hooks/orchestrator-hook.mjs",
+            "command": "node \"${PLUGIN_ROOT}/hooks/orchestrator-hook.mjs\"",
             "statusMessage": "Checking Codex Orchestrator completion standard"
           }
         ]

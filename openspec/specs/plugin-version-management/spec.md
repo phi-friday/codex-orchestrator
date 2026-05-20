@@ -5,9 +5,7 @@
 Define how Codex Orchestrator manages the plugin metadata version, renders
 versioned README documentation, checks generated documentation drift, and
 rolls back failed version bump writes.
-
 ## Requirements
-
 ### Requirement: Plugin metadata is the version source
 The system SHALL treat
 `plugins/codex-orchestrator/.codex-plugin/plugin.json` `version` as the single
@@ -108,3 +106,19 @@ version bump operation fails after making a partial change.
   write fails before the command completes
 - **THEN** the command MUST restore `plugin.json`, `README.md`, and
   `README.kr.md` to their original contents and exit with failure
+
+### Requirement: Version drift check is part of release readiness
+The release readiness workflow SHALL include the generated README version drift
+check.
+
+#### Scenario: Release verification runs generated doc check
+- **WHEN** a maintainer runs the documented release verification sequence
+- **THEN** the sequence MUST include `bun run version:check` in addition to
+  tests, typecheck, and lint.
+
+#### Scenario: README release docs list generated doc check
+- **WHEN** a maintainer reads the development or release verification
+  documentation
+- **THEN** it MUST list `bun run version:check` as a required pre-release
+  command.
+

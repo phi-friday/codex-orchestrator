@@ -5,10 +5,33 @@ import {
   getGitCloneArgs,
   getReferenceEntryNames,
   parseReferenceCliArgs,
+  resolveReferenceOptions,
 } from "./reference-oh-my-opencode-slim.ts";
 
-test("requires a package version", (): void => {
-  expect(() => parseReferenceCliArgs([])).toThrow("--version must be a non-empty string");
+test("requires a package reference version when no explicit version is provided", (): void => {
+  expect(() => resolveReferenceOptions(parseReferenceCliArgs([]), "{}")).toThrow(
+    "references.oh-my-opencode-slim.version"
+  );
+});
+
+test("resolves default package reference version from package metadata", (): void => {
+  expect(
+    resolveReferenceOptions(
+      parseReferenceCliArgs([]),
+      JSON.stringify({
+        references: {
+          "oh-my-opencode-slim": {
+            version: "1.2.3",
+          },
+        },
+      })
+    )
+  ).toEqual({
+    help: false,
+    repo_url: "https://github.com/alvinunreal/oh-my-opencode-slim.git",
+    version: "1.2.3",
+    reference_dir: "references/oh-my-opencode-slim",
+  });
 });
 
 test("parses explicit package version and reference directory", (): void => {
@@ -33,7 +56,7 @@ test("parses help option without requiring other arguments", (): void => {
   expect(parseReferenceCliArgs(["--help"])).toEqual({
     help: true,
     repo_url: "https://github.com/alvinunreal/oh-my-opencode-slim.git",
-    version: "",
+    version: undefined,
     reference_dir: "references/oh-my-opencode-slim",
   });
 });

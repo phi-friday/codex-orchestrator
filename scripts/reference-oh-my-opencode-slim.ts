@@ -23,7 +23,7 @@ type ParsedValue = string | boolean | string[] | boolean[] | undefined;
 interface ReferenceCliOptions {
   help: boolean;
   repo_url: string;
-  version: string;
+  version?: string;
   reference_dir: string;
 }
 
@@ -33,6 +33,14 @@ interface PackageJsonMetadata {
   name?: string;
   repository?: string | { type?: string; url?: string };
   version?: string;
+}
+
+interface RootPackageJson {
+  references?: {
+    "oh-my-opencode-slim"?: {
+      version?: string;
+    };
+  };
 }
 
 interface ThirdPartyNoticeInput {
@@ -49,6 +57,7 @@ export function getUsage(): string {
     "",
     "Options:",
     "  -v, --version <version>     Repository version tag without the leading v.",
+    "                              Defaults to package.json references.oh-my-opencode-slim.version.",
     `  -r, --repo <url>            Git repository URL. Default: ${DEFAULT_REPO_URL}`,
     `      --reference-dir <path>  Output directory. Default: ${DEFAULT_REFERENCE_DIR}`,
     "  -h, --help                  Show this help.",
@@ -99,19 +108,46 @@ export function parseReferenceCliArgs(args: string[]): ReferenceCliOptions {
   return {
     help,
     repo_url: readStringOption(values.repo, "--repo"),
-    version: help ? "" : readStringOption(values.version, "--version"),
+    version:
+      typeof values.version === "string" ? readStringOption(values.version, "--version") : undefined,
     reference_dir: readStringOption(values["reference-dir"], "--reference-dir"),
   };
 }
 
+export function resolveReferenceOptions(
+  options: ReferenceCliOptions,
+  package_json_text: string
+): Required<ReferenceCliOptions> {
+  if (options.help) {
+    return { ...options, version: "" };
+  }
+
+  const package_json = JSON.parse(package_json_text) as RootPackageJson;
+  const package_version = package_json.references?.["oh-my-opencode-slim"]?.version;
+  const version = options.version ?? package_version;
+
+  if (typeof version !== "string" || version.length === 0) {
+    throw new TypeError(
+      "package.json references.oh-my-opencode-slim.version must be a non-empty string"
+    );
+  }
+
+  return {
+    ...options,
+    version,
+  };
+}
+
 export function getGitCloneArgs(options: ReferenceCliOptions, destination: string): string[] {
+  const version = readStringOption(options.version, "--version");
+
   return [
     "git",
     "clone",
     "--depth",
     "1",
     "--branch",
-    `v${options.version}`,
+    `v${version}`,
     options.repo_url,
     destination,
   ];
@@ -211,12 +247,15 @@ export async function fetchReferencePackage(options: ReferenceCliOptions): Promi
 
 async function main(): Promise<void> {
   try {
-    const options = parseReferenceCliArgs(Bun.argv.slice(2));
+    const parsed_options = parseReferenceCliArgs(Bun.argv.slice(2));
 
-    if (options.help) {
+    if (parsed_options.help) {
       process.stdout.write(`${getUsage()}\n`);
       return;
     }
+
+    const package_json_text = await readFile(resolve(REPO_ROOT, "package.json"), "utf8");
+    const options = resolveReferenceOptions(parsed_options, package_json_text);
 
     await fetchReferencePackage(options);
   } catch (error) {

@@ -1,10 +1,12 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { expect, test } from "bun:test";
 import {
+  MANAGED_MARKER,
+  escapeTomlBasicString,
   mergeConfigAgents,
   parseOptions,
   readTemplate,
@@ -123,6 +125,7 @@ test("exports focused installer utilities without running the CLI", (): void => 
   expect(resolveTargetDir).toBeFunction();
   expect(readTemplate).toBeFunction();
   expect(renderTemplate).toBeFunction();
+  expect(escapeTomlBasicString).toBeFunction();
 });
 
 test("parses options and expands configured paths", (): void => {
@@ -313,7 +316,7 @@ test("publishes configuration schema with reasoning effort enum values", async (
   expect(effort_schema?.enum).toEqual(["low", "medium", "high", "xhigh", null]);
 });
 
-test("reads template names and renders model and optional reasoning effort fields", async (): Promise<void> => {
+test("reads template names and renders TOML-safe model and reasoning effort fields", async (): Promise<void> => {
   const fixture = await createFixture("install-subagents-unit-template-");
   const template_path = join(fixture.cwd, "worker.toml");
 
@@ -334,21 +337,27 @@ test("reads template names and renders model and optional reasoning effort field
         model_reasoning_effort: "high",
       })
     ).toBe(
-      'name = "fixer"\nmodel = "gpt-5.4"\nmodel_reasoning_effort = "high"\ndeveloper_instructions = ""\n'
+      `${MANAGED_MARKER}\n` +
+        'name = "fixer"\nmodel = "gpt-5.4"\n' +
+        'model_reasoning_effort = "high"\ndeveloper_instructions = ""\n'
     );
     expect(
       renderTemplate(template.content, {
         model: "gpt-5.4",
         model_reasoning_effort: null,
       })
-    ).toBe('name = "fixer"\nmodel = "gpt-5.4"\ndeveloper_instructions = ""\n');
+    ).toBe([MANAGED_MARKER, 'name = "fixer"', 'model = "gpt-5.4"', 'developer_instructions = ""'].join("\n") + "\n");
+    const escaped_model = String.raw`gpt-\"5\"\nnext = \"bad\"\\tail\u0007`;
+
     expect(
       renderTemplate(template.content, {
-        model: "gpt-5.4",
-        model_reasoning_effort: " ",
+        model: 'gpt-"5"\nnext = "bad"\\tail\u0007',
+        model_reasoning_effort: "high",
       })
     ).toBe(
-      'name = "fixer"\nmodel = "gpt-5.4"\nmodel_reasoning_effort = " "\ndeveloper_instructions = ""\n'
+      `${MANAGED_MARKER}\n` +
+        `name = "fixer"\nmodel = "${escaped_model}"\n` +
+        'model_reasoning_effort = "high"\ndeveloper_instructions = ""\n'
     );
   } finally {
     await fixture.cleanup();
@@ -528,7 +537,7 @@ test("requires target directory for explicit config", async (): Promise<void> =>
   }
 });
 
-test("dry-run reports planned writes and removals without modifying files", async (): Promise<void> => {
+test("dry-run reports planned writes and unmanaged preserves without modifying files", async (): Promise<void> => {
   const fixture = await createFixture("install-subagents-dry-run-");
   const target_dir = join(fixture.cwd, "agents");
 
@@ -555,9 +564,157 @@ test("dry-run reports planned writes and removals without modifying files", asyn
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toMatch(/\[dry-run\] write .*orchestrator-explorer\.toml/u);
-    expect(result.stdout).toMatch(/\[dry-run\] remove .*fixer\.toml/u);
+    expect(result.stdout).toMatch(/\[dry-run\] preserve-unmanaged .*fixer\.toml/u);
     expect(await readFile(join(target_dir, "fixer.toml"), "utf8")).toBe("existing");
   } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("installer preserves unmanaged target files and blocks unmanaged overwrites", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-unmanaged-");
+  const target_dir = join(fixture.cwd, "agents");
+
+  try {
+    await mkdir(target_dir, { recursive: true });
+    await writeFile(join(target_dir, "fixer.toml"), "user fixer", "utf8");
+    await writeFile(
+      join(target_dir, "orchestrator-explorer.toml"),
+      "# Derived from oh-my-opencode-slim 1.1.1\nuser explorer",
+      "utf8"
+    );
+    await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
+      agents: {
+        "orchestrator-explorer": {
+          model: "gpt-5.4",
+        },
+        fixer: {
+          model: null,
+        },
+      },
+    });
+
+    const dry_run = await runInstaller(
+      ["--target-dir", target_dir, "--dry-run"],
+      fixture.cwd,
+      fixture.home
+    );
+
+    expect(dry_run.code).toBe(0);
+    expect(dry_run.stdout).toMatch(/\[dry-run\] conflict .*orchestrator-explorer\.toml/u);
+    expect(dry_run.stdout).toMatch(/\[dry-run\] preserve-unmanaged .*fixer\.toml/u);
+    expect(await readFile(join(target_dir, "fixer.toml"), "utf8")).toBe("user fixer");
+    expect(await readFile(join(target_dir, "orchestrator-explorer.toml"), "utf8")).toContain(
+      "user explorer"
+    );
+
+    const install = await runInstaller(["--target-dir", target_dir], fixture.cwd, fixture.home);
+
+    expect(install.code).not.toBe(0);
+    expect(install.stderr).toMatch(/Refusing to overwrite unmanaged target agent file/u);
+    expect(await readFile(join(target_dir, "orchestrator-explorer.toml"), "utf8")).toContain(
+      "user explorer"
+    );
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("installer overwrites and removes only managed target files", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-managed-");
+  const target_dir = join(fixture.cwd, "agents");
+
+  try {
+    await mkdir(target_dir, { recursive: true });
+    await writeFile(
+      join(target_dir, "orchestrator-explorer.toml"),
+      `${MANAGED_MARKER}\nname = "orchestrator-explorer"\nmodel = "old"\n`,
+      "utf8"
+    );
+    await writeFile(
+      join(target_dir, "fixer.toml"),
+      `${MANAGED_MARKER}\nname = "fixer"\nmodel = "old"\n`,
+      "utf8"
+    );
+    await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
+      agents: {
+        "orchestrator-explorer": {
+          model: "gpt-5.4",
+        },
+        fixer: {
+          model: null,
+        },
+      },
+    });
+
+    const dry_run = await runInstaller(
+      ["--target-dir", target_dir, "--dry-run"],
+      fixture.cwd,
+      fixture.home
+    );
+
+    expect(dry_run.code).toBe(0);
+    expect(dry_run.stdout).toMatch(/\[dry-run\] overwrite-managed .*orchestrator-explorer\.toml/u);
+    expect(dry_run.stdout).toMatch(/\[dry-run\] remove-managed .*fixer\.toml/u);
+
+    const install = await runInstaller(["--target-dir", target_dir], fixture.cwd, fixture.home);
+
+    expect(install.code).toBe(0);
+    expect(await readFile(join(target_dir, "orchestrator-explorer.toml"), "utf8")).toContain(
+      'model = "gpt-5.4"'
+    );
+    await expectRejectsCode(readFile(join(target_dir, "fixer.toml"), "utf8"), "ENOENT");
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("installer reports failing write paths", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-write-failure-");
+  const target_dir = join(fixture.cwd, "agents");
+
+  try {
+    await mkdir(target_dir, { recursive: true });
+    await mkdir(join(target_dir, "orchestrator-explorer.toml"));
+    await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
+      agents: {
+        "orchestrator-explorer": {
+          model: "gpt-5.4",
+        },
+      },
+    });
+
+    const result = await runInstaller(["--target-dir", target_dir], fixture.cwd, fixture.home);
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toMatch(/Failed to write .*orchestrator-explorer\.toml/u);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("installer reports failing removal paths", async (): Promise<void> => {
+  const fixture = await createFixture("install-subagents-remove-failure-");
+  const target_dir = join(fixture.cwd, "agents");
+
+  try {
+    await mkdir(target_dir, { recursive: true });
+    await writeFile(join(target_dir, "fixer.toml"), `${MANAGED_MARKER}\n`, "utf8");
+    await chmod(target_dir, 0o555);
+    await writeJson(join(fixture.cwd, "codex-orchestrator.json"), {
+      agents: {
+        fixer: {
+          model: null,
+        },
+      },
+    });
+
+    const result = await runInstaller(["--target-dir", target_dir], fixture.cwd, fixture.home);
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toMatch(/Failed to remove .*fixer\.toml/u);
+  } finally {
+    await chmod(target_dir, 0o755).catch((): string => "");
     await fixture.cleanup();
   }
 });

@@ -29,6 +29,14 @@ import { parseArgs } from "node:util";
  * @property {string} output_name
  */
 
+/**
+ * @typedef {object} InstallPlan
+ * @property {{ action: "write" | "overwrite-managed"; content: string; output_path: string }[]} planned_writes
+ * @property {{ output_path: string }[]} planned_removals
+ * @property {{ output_path: string }[]} preserved_unmanaged
+ * @property {{ output_path: string }[]} conflicts
+ */
+
 const USAGE = `Usage:
   node install-subagents.mjs [--config <path> --target-dir <dir>] [--dry-run]
 
@@ -44,6 +52,7 @@ const MODEL_TEMPLATE_TOKEN = "{{MODEL}}";
 const MODEL_REASONING_EFFORT_LINE_TOKEN = "{{MODEL_REASONING_EFFORT_LINE}}";
 const MODEL_REASONING_EFFORT_VALUES = ["low", "medium", "high", "xhigh"];
 const MODEL_REASONING_EFFORT_VALUE_SET = new Set(MODEL_REASONING_EFFORT_VALUES);
+const MANAGED_MARKER = "# Managed by Codex Orchestrator install-subagents.mjs";
 // oxlint-disable-next-line unicorn/prefer-import-meta-properties
 const MODULE_PATH = fileURLToPath(import.meta.url);
 // oxlint-disable-next-line unicorn/prefer-import-meta-properties
@@ -334,12 +343,77 @@ async function readTemplate(file_path) {
 function renderTemplate(template, fields) {
   const reasoning_effort_line =
     typeof fields.model_reasoning_effort === "string"
-      ? `model_reasoning_effort = "${fields.model_reasoning_effort}"\n`
+      ? `model_reasoning_effort = "${escapeTomlBasicString(fields.model_reasoning_effort)}"\n`
       : "";
-
-  return template
-    .replaceAll(MODEL_TEMPLATE_TOKEN, fields.model)
+  const rendered = template
+    .replaceAll(MODEL_TEMPLATE_TOKEN, escapeTomlBasicString(fields.model))
     .replaceAll(MODEL_REASONING_EFFORT_LINE_TOKEN, reasoning_effort_line);
+
+  return rendered.startsWith(`${MANAGED_MARKER}\n`) ? rendered : `${MANAGED_MARKER}\n${rendered}`;
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeTomlBasicString(value) {
+  let escaped = "";
+
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+
+    switch (char) {
+      case "\\":
+        escaped += "\\\\";
+        break;
+      case "\"":
+        escaped += "\\\"";
+        break;
+      case "\b":
+        escaped += "\\b";
+        break;
+      case "\t":
+        escaped += "\\t";
+        break;
+      case "\n":
+        escaped += "\\n";
+        break;
+      case "\f":
+        escaped += "\\f";
+        break;
+      case "\r":
+        escaped += "\\r";
+        break;
+      default:
+        escaped +=
+          code < 0x20 || code === 0x7f ? `\\u${code.toString(16).padStart(4, "0")}` : char;
+        break;
+    }
+  }
+
+  return escaped;
+}
+
+/**
+ * @param {string} file_path
+ * @returns {Promise<"absent" | "managed" | "unmanaged">}
+ */
+async function readTargetState(file_path) {
+  try {
+    const content = await readFile(file_path, "utf8");
+
+    return content.includes(MANAGED_MARKER) ? "managed" : "unmanaged";
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error.code === "ENOENT" || error.code === "EISDIR")
+    ) {
+      return "absent";
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -371,68 +445,190 @@ async function installSubagents(options) {
 
   const templates = await Promise.all(template_files.map(file_path => readTemplate(file_path)));
   const template_names = new Set(templates.map(template => template.agent_name));
-  /** @type {{ content: string; output_path: string }[]} */
-  const planned_writes = [];
-  /** @type {string[]} */
-  const removal_candidates = [];
-  /** @type {string[]} */
-  const planned_removals = [];
+  const plan = await planInstall(templates, agents, target_dir);
 
   warnUnknownAgents(agents, template_names);
-
-  for (const template of templates) {
-    const output_path = join(target_dir, template.output_name);
-    const model = agents[template.agent_name]?.model;
-
-    if (typeof model === "string" && model.trim() !== "") {
-      planned_writes.push({
-        content: renderTemplate(template.content, {
-          model,
-          model_reasoning_effort: agents[template.agent_name]?.model_reasoning_effort,
-        }),
-        output_path,
-      });
-      continue;
-    }
-
-    removal_candidates.push(output_path);
-  }
-
-  const existing_removals = await Promise.all(
-    [...new Set(removal_candidates)].map(async removal_path => ({
-      exists: await fileExists(removal_path),
-      removal_path,
-    }))
-  );
-
-  planned_removals.push(
-    ...existing_removals.filter(removal => removal.exists).map(removal => removal.removal_path)
-  );
+  assertNoConflicts(options.dry_run, plan.conflicts);
 
   if (!options.dry_run) {
     await mkdir(target_dir, { recursive: true });
   }
 
   if (options.dry_run) {
-    const write_lines = planned_writes.map(subagent => `[dry-run] write ${subagent.output_path}`);
-    const remove_lines = planned_removals.map(output_path => `[dry-run] remove ${output_path}`);
-
-    writeStdout([...write_lines, ...remove_lines].join("\n") + "\n");
+    writeStdout(formatDryRunOutput(plan));
     return;
   }
 
+  await writePlannedSubagents(plan.planned_writes);
+  await removePlannedSubagents(plan.planned_removals);
+  writeStdout(formatInstallOutput(plan));
+}
+
+/**
+ * @param {TemplateDefinition[]} templates
+ * @param {Record<string, { model?: string | null; model_reasoning_effort?: string | null }>} agents
+ * @param {string} target_dir
+ * @returns {Promise<InstallPlan>}
+ */
+async function planInstall(templates, agents, target_dir) {
+  const template_plans = await Promise.all(
+    templates.map(template => planTemplate(template, agents, target_dir))
+  );
+  const removal_candidates = template_plans.flatMap(plan => plan.removal_candidates);
+  const removal_plan = await planRemovals(removal_candidates);
+
+  return {
+    conflicts: template_plans.flatMap(plan => plan.conflicts),
+    planned_removals: removal_plan.planned_removals,
+    planned_writes: template_plans.flatMap(plan => plan.planned_writes),
+    preserved_unmanaged: removal_plan.preserved_unmanaged,
+  };
+}
+
+/**
+ * @param {TemplateDefinition} template
+ * @param {Record<string, { model?: string | null; model_reasoning_effort?: string | null }>} agents
+ * @param {string} target_dir
+ * @returns {Promise<InstallPlan & { removal_candidates: string[] }>}
+ */
+async function planTemplate(template, agents, target_dir) {
+  const output_path = join(target_dir, template.output_name);
+  const model = agents[template.agent_name]?.model;
+  const target_state = await readTargetState(output_path);
+  /** @type {InstallPlan & { removal_candidates: string[] }} */
+  const plan = {
+    conflicts: [],
+    planned_removals: [],
+    planned_writes: [],
+    preserved_unmanaged: [],
+    removal_candidates: [],
+  };
+
+  if (typeof model !== "string" || model.trim() === "") {
+    plan.removal_candidates.push(output_path);
+    return plan;
+  }
+
+  if (target_state === "unmanaged") {
+    plan.conflicts.push({ output_path });
+    return plan;
+  }
+
+  plan.planned_writes.push({
+    action: target_state === "managed" ? "overwrite-managed" : "write",
+    content: renderTemplate(template.content, {
+      model,
+      model_reasoning_effort: agents[template.agent_name]?.model_reasoning_effort,
+    }),
+    output_path,
+  });
+
+  return plan;
+}
+
+/**
+ * @param {string[]} removal_candidates
+ * @returns {Promise<Pick<InstallPlan, "planned_removals" | "preserved_unmanaged">>}
+ */
+async function planRemovals(removal_candidates) {
+  const existing_removals = await Promise.all(
+    [...new Set(removal_candidates)].map(async removal_path => ({
+      removal_path,
+      state: await readTargetState(removal_path),
+    }))
+  );
+
+  return {
+    planned_removals: existing_removals
+      .filter(removal => removal.state === "managed")
+      .map(removal => ({ output_path: removal.removal_path })),
+    preserved_unmanaged: existing_removals
+      .filter(removal => removal.state === "unmanaged")
+      .map(removal => ({ output_path: removal.removal_path })),
+  };
+}
+
+/**
+ * @param {boolean} dry_run
+ * @param {{ output_path: string }[]} conflicts
+ * @returns {void}
+ */
+function assertNoConflicts(dry_run, conflicts) {
+  if (dry_run || conflicts.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `Refusing to overwrite unmanaged target agent file(s): ${conflicts
+      .map(conflict => conflict.output_path)
+      .join(", ")}`
+  );
+}
+
+/**
+ * @param {InstallPlan} plan
+ * @returns {string}
+ */
+function formatDryRunOutput(plan) {
+  return (
+    [
+      ...plan.planned_writes.map(subagent => `[dry-run] ${subagent.action} ${subagent.output_path}`),
+      ...plan.planned_removals.map(removal => `[dry-run] remove-managed ${removal.output_path}`),
+      ...plan.preserved_unmanaged.map(
+        preserve => `[dry-run] preserve-unmanaged ${preserve.output_path}`
+      ),
+      ...plan.conflicts.map(conflict => `[dry-run] conflict ${conflict.output_path}`),
+    ].join("\n") + "\n"
+  );
+}
+
+/**
+ * @param {InstallPlan} plan
+ * @returns {string}
+ */
+function formatInstallOutput(plan) {
+  return (
+    [
+      ...plan.planned_writes.map(subagent => `installed ${subagent.output_path}`),
+      ...plan.planned_removals.map(removal => `removed ${removal.output_path}`),
+      ...plan.preserved_unmanaged.map(preserve => `preserved unmanaged ${preserve.output_path}`),
+    ].join("\n") + "\n"
+  );
+}
+
+/**
+ * @param {InstallPlan["planned_writes"]} planned_writes
+ * @returns {Promise<void>}
+ */
+async function writePlannedSubagents(planned_writes) {
   await Promise.all(
     planned_writes.map(async subagent => {
-      await writeFile(subagent.output_path, subagent.content);
+      try {
+        await writeFile(subagent.output_path, subagent.content);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        throw new Error(`Failed to write ${subagent.output_path}: ${message}`, { cause: error });
+      }
     })
   );
-  await Promise.all(planned_removals.map(output_path => rm(output_path)));
+}
 
-  writeStdout(
-    [
-      ...planned_writes.map(subagent => `installed ${subagent.output_path}`),
-      ...planned_removals.map(output_path => `removed ${output_path}`),
-    ].join("\n") + "\n"
+/**
+ * @param {InstallPlan["planned_removals"]} planned_removals
+ * @returns {Promise<void>}
+ */
+async function removePlannedSubagents(planned_removals) {
+  await Promise.all(
+    planned_removals.map(async removal => {
+      try {
+        await rm(removal.output_path);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        throw new Error(`Failed to remove ${removal.output_path}: ${message}`, { cause: error });
+      }
+    })
   );
 }
 
@@ -461,12 +657,15 @@ function isMainModule(module_url, entry_path) {
 
 export {
   discoverConfigSources,
+  escapeTomlBasicString,
   expandHome,
   fileExists,
   installSubagents,
   listTemplateFiles,
+  MANAGED_MARKER,
   mergeConfigAgents,
   parseOptions,
+  readTargetState,
   readConfigAgents,
   readTemplate,
   renderTemplate,

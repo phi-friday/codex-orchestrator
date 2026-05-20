@@ -7,7 +7,6 @@
     "url": "https://github.com/phi-friday/codex-orchestrator"
   },
   "type": "module",
-  "module": "index.ts",
   "scripts": {
     "typecheck": "tsc",
     "lint": "oxlint --config oxlint.config.ts",
@@ -15,8 +14,7 @@
     "format": "oxfmt --config oxfmt.config.ts",
     "version": "bun scripts/version.ts",
     "version:check": "bun scripts/version.ts --check",
-    "reference:oh-my-opencode-slim": "bun scripts/reference-oh-my-opencode-slim.ts --version $(bun reference:oh-my-opencode-slim:version)",
-    "reference:oh-my-opencode-slim:version": "jq -r '.references[\"oh-my-opencode-slim\"].version' package.json"
+    "reference:oh-my-opencode-slim": "bun scripts/reference-oh-my-opencode-slim.ts"
   },
   "devDependencies": {
     "@types/bun": "1.3.14",

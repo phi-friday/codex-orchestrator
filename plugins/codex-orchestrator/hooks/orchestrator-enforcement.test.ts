@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { chmod, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
 import {
   buildHookOutput,
@@ -18,6 +20,20 @@ type RunResult = {
 
 const NODE_EXECUTABLE = Bun.which("node") ?? "node";
 const HOOK_PATH = resolve(import.meta.dirname, "orchestrator-hook.mjs");
+const HOOK_CONFIG_PATH = resolve(import.meta.dirname, "hooks.json");
+
+type HookDefinition = {
+  type: "command";
+  command: string;
+  statusMessage: string;
+};
+
+type HookConfig = {
+  hooks: {
+    Stop: { hooks: HookDefinition[] }[];
+    UserPromptSubmit: { hooks: HookDefinition[] }[];
+  };
+};
 
 async function runHook(input: unknown): Promise<RunResult> {
   const child = spawn(NODE_EXECUTABLE, [HOOK_PATH], {
@@ -48,6 +64,51 @@ async function runHook(input: unknown): Promise<RunResult> {
   };
 }
 
+async function readHookConfig(): Promise<HookConfig> {
+  return JSON.parse(await readFile(HOOK_CONFIG_PATH, "utf8")) as HookConfig;
+}
+
+async function captureCommandArguments(command: string): Promise<string[]> {
+  const temp_dir = await mkdtemp(join(tmpdir(), "codex hook path "));
+  const bin_dir = join(temp_dir, "bin");
+  const output_path = join(temp_dir, "argv.json");
+  const node_path = join(bin_dir, "node");
+  const record_argv_script = [
+    "const fs = require('fs');",
+    "const args = fs.readFileSync(0, 'utf8').split('\\n').filter(Boolean);",
+    "fs.writeFileSync(process.argv[1], JSON.stringify(args));",
+  ].join(" ");
+  const recorder_command = [
+    JSON.stringify(NODE_EXECUTABLE),
+    "-e",
+    JSON.stringify(record_argv_script),
+    JSON.stringify(output_path),
+  ].join(" ");
+  await mkdir(bin_dir, { recursive: true });
+  await writeFile(
+    node_path,
+    ["#!/bin/sh", `printf '%s\\n' "$@" | ${recorder_command}`, ""].join("\n"),
+    "utf8"
+  );
+  await chmod(node_path, 0o755);
+
+  const plugin_root = join(temp_dir, "plugin root with spaces");
+  const expanded_command = command.replaceAll("${PLUGIN_ROOT}", plugin_root);
+  const child = spawn("/bin/sh", ["-c", expanded_command], {
+    env: { PATH: bin_dir },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  const code = await new Promise<number>(resolve_exit => {
+    child.on("close", exit_code => {
+      resolve_exit(exit_code ?? 1);
+    });
+  });
+  expect(code).toBe(0);
+
+  return JSON.parse(await readFile(output_path, "utf8")) as string[];
+}
+
 function expectBlockedReason(output: ReturnType<typeof buildStopOutput>): string {
   expect(output).toEqual({
     decision: "block",
@@ -60,6 +121,41 @@ function expectBlockedReason(output: ReturnType<typeof buildStopOutput>): string
 
   return output.reason;
 }
+
+function expectHookCommand(command: string | undefined): string {
+  expect(command).toEqual(expect.any(String));
+
+  if (command === undefined) {
+    throw new Error("expected hook command");
+  }
+
+  return command;
+}
+
+describe("orchestrator hook configuration", (): void => {
+  test(
+    "UserPromptSubmit command safely delimits plugin roots with spaces",
+    async (): Promise<void> => {
+      const config = await readHookConfig();
+      const command = expectHookCommand(config.hooks.UserPromptSubmit[0]?.hooks[0]?.command);
+
+      expect(command).toContain('"${PLUGIN_ROOT}/hooks/orchestrator-hook.mjs"');
+      expect(await captureCommandArguments(command)).toEqual([
+        expect.stringContaining("plugin root with spaces/hooks/orchestrator-hook.mjs"),
+      ]);
+    }
+  );
+
+  test("Stop command safely delimits plugin roots with spaces", async (): Promise<void> => {
+    const config = await readHookConfig();
+    const command = expectHookCommand(config.hooks.Stop[0]?.hooks[0]?.command);
+
+    expect(command).toContain('"${PLUGIN_ROOT}/hooks/orchestrator-hook.mjs"');
+    expect(await captureCommandArguments(command)).toEqual([
+      expect.stringContaining("plugin root with spaces/hooks/orchestrator-hook.mjs"),
+    ]);
+  });
+});
 
 describe("orchestrator hook prompt decisions", (): void => {
   test("detects applicable implementation prompts", (): void => {

@@ -108,6 +108,28 @@ marketplace flow.
 
 Use `--ref` to pin the branch, tag, or commit you want Codex to fetch.
 
+## Marketplace Install Smoke Gate
+
+Before publishing a release tag, run a fresh marketplace install smoke check with
+a pinned ref:
+
+1. Use a clean Codex home or disposable test environment.
+2. Add the Git marketplace source with
+   `codex plugin marketplace add phi-friday/codex-orchestrator --ref v0.1.0`.
+3. Confirm the marketplace catalog resolves the `codex-orchestrator` plugin.
+4. Install the plugin through the marketplace flow and confirm the
+   `codex-orchestrator` and `install-subagents` skills resolve.
+5. Confirm `hooks/hooks.json` resolves from the installed plugin root.
+6. From the installed plugin root, run the bundled installer in dry-run mode
+   with a test configuration:
+
+```bash
+node scripts/install-subagents.mjs \
+  --config /tmp/codex-orchestrator-smoke.json \
+  --target-dir /tmp/codex-orchestrator-smoke-agents \
+  --dry-run
+```
+
 ## Configure Bundled Subagents
 
 After installing the plugin, configure which bundled subagents should be
@@ -154,8 +176,10 @@ This plugin declares Codex plugin hooks in
 `plugins/codex-orchestrator/hooks/hooks.json`. They run Node commands for:
 
 - `UserPromptSubmit`: adds orchestration context for applicable coding prompts.
-- `Stop`: checks whether the assistant response mentions orchestration or a
-  valid local-only reason, cleanup, and verification before finishing.
+- `Stop`: checks assistant response text for mentions of orchestration or a
+  valid local-only reason, cleanup, and verification before finishing. This is a
+  text-based completion nudge; it does not independently prove that subagents
+  were closed or that verification commands actually ran.
 
 Hooks only run when plugin hooks are enabled in the Codex environment:
 
@@ -185,6 +209,7 @@ Run verification:
 bun run test
 bun run typecheck
 bun run lint
+bun run version:check
 ```
 
 Refresh the vendored `oh-my-opencode-slim` reference snapshot version declared

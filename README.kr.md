@@ -107,6 +107,28 @@ Codex는 Git marketplace source를 가져온 뒤 이 marketplace 파일을 플�
 
 `--ref`로 Codex가 가져올 브랜치, 태그, 커밋을 고정할 수 있습니다.
 
+## Marketplace 설치 스모크 게이트
+
+릴리스 태그를 공개하기 전에 고정된 ref로 깨끗한 marketplace 설치 스모크 체크를
+실행합니다.
+
+1. 깨끗한 Codex home 또는 폐기 가능한 테스트 환경을 사용합니다.
+2. `codex plugin marketplace add phi-friday/codex-orchestrator --ref v0.1.0`로
+   Git marketplace source를 추가합니다.
+3. marketplace 카탈로그가 `codex-orchestrator` 플러그인을 해석하는지 확인합니다.
+4. marketplace 흐름으로 플러그인을 설치하고 `codex-orchestrator` 및
+   `install-subagents` 스킬이 해석되는지 확인합니다.
+5. 설치된 플러그인 루트에서 `hooks/hooks.json`이 해석되는지 확인합니다.
+6. 설치된 플러그인 루트에서 테스트 설정으로 번들 설치 프로그램의 dry-run을
+   실행합니다.
+
+```bash
+node scripts/install-subagents.mjs \
+  --config /tmp/codex-orchestrator-smoke.json \
+  --target-dir /tmp/codex-orchestrator-smoke-agents \
+  --dry-run
+```
+
 ## 번들 서브에이전트 설정
 
 플러그인을 설치한 뒤에는 어떤 번들 서브에이전트를 사용할지, 각 에이전트가 어떤
@@ -156,7 +178,9 @@ Codex는 Git marketplace source를 가져온 뒤 이 marketplace 파일을 플�
 - `UserPromptSubmit`: 적용 가능한 코딩 프롬프트에 오케스트레이션 컨텍스트를
   추가합니다.
 - `Stop`: 응답이 끝나기 전에 오케스트레이션 또는 유효한 로컬 단독 처리 사유,
-  정리, 검증을 언급했는지 확인합니다.
+  정리, 검증을 언급했는지 응답 텍스트를 확인합니다. 이는 텍스트 기반 완료
+  알림이며, 서브에이전트가 실제로 종료되었는지 또는 검증 명령이 실제로
+  실행되었는지를 독립적으로 증명하지는 않습니다.
 
 훅은 Codex 환경에서 플러그인 훅이 활성화되어 있을 때만 실행됩니다.
 
@@ -186,6 +210,7 @@ bun install
 bun run test
 bun run typecheck
 bun run lint
+bun run version:check
 ```
 
 `package.json`에 선언된 `oh-my-opencode-slim` 참조 스냅샷 버전을 갱신:

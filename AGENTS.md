@@ -33,7 +33,7 @@ bun run reference:oh-my-opencode-slim
 - Installer tests should keep direct Node subprocess coverage for the documented `.mjs` CLI path.
 - Importable installer utilities may be tested directly, but importing the installer module must not trigger CLI side effects.
 - Test fixture files should use temporary directories and clean them up after each test.
-- Run `bun run test`, `bun run typecheck`, and `bun run lint` before claiming implementation completion.
+- Run `bun run test`, `bun run typecheck`, `bun run lint`, and `bun run version:check` before claiming implementation completion.
 
 ## TypeScript Conventions
 

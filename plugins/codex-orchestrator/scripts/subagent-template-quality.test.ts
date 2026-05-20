@@ -109,6 +109,18 @@ const TEMPLATE_COVERAGE: TemplateCoverage[] = [
         label: "source distinction",
         snippets: ["official guidance", "community patterns", "your own inference"],
       },
+      {
+        label: "read-only default",
+        snippets: ["sandbox_mode = \"read-only\""],
+      },
+      {
+        label: "edit routing",
+        snippets: [
+          "READ-ONLY",
+          "do not edit repository files",
+          "route implementation changes to the parent or a write-capable role",
+        ],
+      },
     ],
   },
   {
@@ -245,4 +257,11 @@ describe("bundled subagent template quality", (): void => {
       }
     });
   }
+
+  test("librarian template uses an effective read-only sandbox", async (): Promise<void> => {
+    const content = await readTemplate("librarian");
+
+    expect(content).toMatch(/^sandbox_mode = "read-only"$/mu);
+    expect(content).not.toMatch(/^sandbox_mode = "workspace-write"$/mu);
+  });
 });
