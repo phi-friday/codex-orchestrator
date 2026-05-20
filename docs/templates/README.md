@@ -86,13 +86,13 @@ plugins/codex-orchestrator/
 Add this repository as a Git marketplace source:
 
 ```bash
-codex plugin marketplace add https://github.com/phi-friday/codex-orchestrator --ref v0.1.0
+codex plugin marketplace add https://github.com/phi-friday/codex-orchestrator --ref v{{VERSION}}
 ```
 
 Or, with GitHub shorthand:
 
 ```bash
-codex plugin marketplace add phi-friday/codex-orchestrator --ref v0.1.0
+codex plugin marketplace add phi-friday/codex-orchestrator --ref v{{VERSION}}
 ```
 
 This repository includes a marketplace file at:

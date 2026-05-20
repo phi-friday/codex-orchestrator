@@ -85,13 +85,13 @@ plugins/codex-orchestrator/
 이 저장소를 Git marketplace source로 추가합니다.
 
 ```bash
-codex plugin marketplace add https://github.com/phi-friday/codex-orchestrator --ref v0.1.0
+codex plugin marketplace add https://github.com/phi-friday/codex-orchestrator --ref v{{VERSION}}
 ```
 
 GitHub shorthand를 사용할 수도 있습니다.
 
 ```bash
-codex plugin marketplace add phi-friday/codex-orchestrator --ref v0.1.0
+codex plugin marketplace add phi-friday/codex-orchestrator --ref v{{VERSION}}
 ```
 
 이 저장소에는 다음 위치에 marketplace 파일이 포함되어 있습니다.
