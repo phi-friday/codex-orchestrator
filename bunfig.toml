@@ -1,6 +1,9 @@
 telemetry = false
 
 [test]
+concurrentTestGlob = "**/*.test.ts"
+timeout = 5000
+coverageSkipTestFiles = true
 pathIgnorePatterns = [
   "**/dist/**",
   "**/node_modules/**",
