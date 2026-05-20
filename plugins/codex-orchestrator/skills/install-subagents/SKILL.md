@@ -97,7 +97,47 @@ string. Accepted reasoning effort values are `low`, `medium`, `high`, and
 `xhigh`; other strings, including blank strings, are rejected.
 Unknown agent names are ignored with a warning.
 
+## Local Interview Wizard
+
+When the user can open a local browser URL and the wizard command is available
+and suitable, the agent must start the local interview wizard before running
+install-subagents.mjs:
+
+```bash
+node plugins/codex-orchestrator/scripts/install-subagents-wizard.mjs
+```
+
+After the Node server starts, report the printed `wizard url` to the user. The
+wizard renders available configuration sources, target directory choices,
+matching installed bundled agent files, bundled agent descriptions, current
+per-agent model choices, and current per-agent reasoning effort choices.
+
+The wizard uses a minimal local `POST /submit` endpoint to write submitted
+answers to the printed `answers path`. It does not write
+`codex-orchestrator.json`, run `install-subagents.mjs`, or modify agent TOML
+files. After the user submits the form, the wizard closes the local server,
+reads the answers JSON, prints the submitted answers, and exits. If no answers
+arrive before the timeout, the wizard exits with a timeout error.
+
+While the wizard command is running, keep the command session open and poll it
+regularly for completion instead of ending the agent turn and waiting for the
+user to report that they submitted the form. Once the command exits, continue
+with the normal agent-controlled flow: read or use the printed submitted
+answers, prepare or update configuration, run install-subagents.mjs --dry-run
+only after wizard-submitted answers or a completed fallback chat interview,
+summarize the plan, and ask for final user confirmation before any non-dry-run
+install.
+
+Use the chat interview flow below only when the wizard is unavailable,
+unsuitable for the user's environment, fails to start, the user cannot open the
+local URL, the user declines, the wizard exits non-zero, the wizard returns
+invalid answers, or the wizard exits without submitted answers, including a
+timeout.
+
 ## Command
+
+The Node installer remains the dry-run and install engine after intent has been
+collected through wizard answers or a completed fallback chat interview.
 
 From the repository root:
 
@@ -126,58 +166,31 @@ node plugins/codex-orchestrator/scripts/install-subagents.mjs \
   --target-dir ~/.codex/agents
 ```
 
-Preview writes and removals without modifying files:
+Preview writes and removals without modifying files after interview answers
+have been collected:
 
 ```bash
 node plugins/codex-orchestrator/scripts/install-subagents.mjs \
   --dry-run
 ```
 
-## Local Interview Wizard
-
-When the user can open a local browser URL, prefer the local wizard to collect
-the install interview:
-
-```bash
-node plugins/codex-orchestrator/scripts/install-subagents-wizard.mjs
-```
-
-After the Node server starts, report the printed `wizard url` to the user. The
-wizard renders available configuration sources, target directory choices,
-matching installed bundled agent files, bundled agent descriptions, current
-per-agent model choices, and current per-agent reasoning effort choices.
-
-The wizard uses a minimal local `POST /submit` endpoint to write submitted
-answers to the printed `answers path`. It does not write
-`codex-orchestrator.json`, run `install-subagents.mjs`, or modify agent TOML
-files. After the user submits the form, the wizard closes the local server,
-reads the answers JSON, prints the submitted answers, and exits. If no answers
-arrive before the timeout, the wizard exits with a timeout error.
-
-While the wizard command is running, keep the command session open and poll it
-regularly for completion instead of ending the agent turn and waiting for the
-user to report that they submitted the form. Once the command exits, continue
-with the normal agent-controlled flow: read or use the printed submitted
-answers, prepare or update configuration, run `install-subagents.mjs --dry-run`,
-summarize the plan, and ask for final user confirmation before any non-dry-run
-install.
-
-If the wizard is unavailable, unsuitable, or declined by the user, use the chat
-interview flow below.
-
 ## Agent Behavior
 
 When using this skill as an agent:
 
 1. Interview before planning.
-   - Prefer the local interview wizard when the user can open the reported local
-     URL. Start the wizard, report the `wizard url`, wait for the command to
-     print submitted answers and exit, and read the `answers path` JSON before
-     preparing configuration changes. Do this by polling the running command
-     session until it exits or times out; do not finish the agent response while
-     the wizard command is still running.
-   - Fall back to a chat interview when the wizard is unavailable, unsuitable,
-     or declined by the user.
+   - When the user can open the reported local URL and the wizard command is
+     available and suitable, start the wizard, report the `wizard url`, wait for
+     the command to print submitted answers and exit, and read the
+     `answers path` JSON before preparing configuration changes. Do this by
+     polling the running command session until it exits or times out; do not
+     finish the agent response while the wizard command is still running.
+   - Fall back to a chat interview only when the wizard is unavailable,
+     unsuitable for the user's environment, fails to start, the user cannot open
+     the local URL, the user declines, the wizard exits non-zero, the wizard
+     returns invalid answers, or the wizard exits without submitted answers,
+     including a timeout. State or discuss that fallback reason before
+     continuing.
    - Identify available configuration sources: global
      `~/.codex/codex-orchestrator.json`, repository-local
      `<cwd>/codex-orchestrator.json`, and any explicit config path the user
@@ -198,6 +211,8 @@ When using this skill as an agent:
    - Preserve the CLI contract: it is non-interactive, and the agent is
      responsible for user questions and confirmation.
 3. Run `--dry-run` after selecting config and target choices.
+   - Run install-subagents.mjs --dry-run only after wizard-submitted answers or
+     a completed fallback chat interview.
    - Summarize the resolved configuration source, target directory, enabled
      agents, disabled agents, planned writes, planned overwrites, planned
      removals, and files that will be preserved.

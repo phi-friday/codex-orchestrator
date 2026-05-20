@@ -7,7 +7,8 @@ local subagent install wizard command is available, suitable, and the user can
 open the reported local URL, the agent MUST start the wizard as the primary
 interview mechanism before running `install-subagents.mjs`. The agent SHALL use
 the chat interview flow only after the wizard is unavailable, unsuitable,
-declined by the user, or exits without submitted answers.
+declined by the user, exits unsuccessfully, returns invalid answers, or times
+out without submitted answers.
 
 #### Scenario: Installation intent is gathered
 - **WHEN** a user asks an agent to install, refresh, repair, or reinstall bundled
@@ -66,4 +67,5 @@ collection.
 - **WHEN** the plugin default prompt instructs an agent to use
   `$install-subagents`
 - **THEN** the prompt also tells the agent to attempt the local install wizard
-  first and use chat fallback only when the wizard cannot run or is declined
+  first and use chat fallback only when the wizard cannot run, is unsuitable,
+  is declined, exits unsuccessfully, returns invalid answers, or times out

@@ -40,6 +40,7 @@ const INSTALL_SUBAGENTS_SKILL_PATH = resolve(
   "install-subagents",
   "SKILL.md"
 );
+const PLUGIN_METADATA_PATH = resolve(import.meta.dirname, "..", ".codex-plugin", "plugin.json");
 const SCHEMA_PATH = resolve(
   import.meta.dirname,
   "..",
@@ -572,6 +573,20 @@ test("install-subagents skill requires interview, dry-run review, and confirmati
   expect(normalized_skill).toContain("POST /submit");
   expect(normalized_skill).toContain("closes the local server");
   expect(normalized_skill).toContain("timeout error");
+  expect(normalized_skill).toContain(
+    "must start the local interview wizard before running install-subagents.mjs"
+  );
+  expect(normalized_skill).toContain(
+    "run install-subagents.mjs --dry-run only after wizard-submitted answers or a completed fallback chat interview"
+  );
+  expect(normalized_skill).toContain("wizard is unavailable");
+  expect(normalized_skill).toContain("unsuitable for the user's environment");
+  expect(normalized_skill).toContain("fails to start");
+  expect(normalized_skill).toContain("user cannot open");
+  expect(normalized_skill).toContain("user declines");
+  expect(normalized_skill).toContain("wizard exits non-zero");
+  expect(normalized_skill).toContain("wizard returns invalid answers");
+  expect(normalized_skill).toContain("wizard exits without submitted answers");
   expect(normalized_skill).toContain("poll it regularly for completion");
   expect(normalized_skill).toContain("do not finish the agent response");
   expect(normalized_skill).toContain("configuration sources");
@@ -585,6 +600,21 @@ test("install-subagents skill requires interview, dry-run review, and confirmati
   expect(normalized_skill).toContain("cannot selectively skip a planned write");
   expect(normalized_skill).toContain("final user confirmation");
   expect(normalized_skill).toContain("must not run the non-dry-run installer");
+  expect(normalized_skill.indexOf("Local Interview Wizard")).toBeLessThan(
+    normalized_skill.indexOf("## Command")
+  );
+});
+
+test("plugin prompt tells agents to try the install wizard before chat fallback", async (): Promise<void> => {
+  const plugin_json = await readFile(PLUGIN_METADATA_PATH, "utf8");
+  const plugin_metadata = JSON.parse(plugin_json) as { interface: { defaultPrompt: string[] } };
+  const default_prompt = plugin_metadata.interface.defaultPrompt.join(" ");
+
+  expect(default_prompt).toContain("attempt the local install wizard first");
+  expect(default_prompt).toContain(
+    "use chat fallback only when the wizard cannot run, is unsuitable, is declined, exits unsuccessfully, returns invalid answers, or times out"
+  );
+  expect(default_prompt).not.toContain("wizard performs installation");
 });
 
 test("discovers bundled TOML templates and includes Codex custom agent fields", async (): Promise<void> => {

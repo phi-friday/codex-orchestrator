@@ -23,7 +23,7 @@
     "defaultPrompt": [
       "Use $codex-orchestrator for substantive coding-agent work unless the user explicitly opts out.",
       "Spawn suitable available subagents by default for repository investigation, review, multi-step work, multi-file edits, implementation lanes, and verification lanes.",
-      "When $codex-orchestrator first detects missing bundled subagents in a Codex session, use or recommend $install-subagents once, then route with available specialists or fallbacks."
+      "When $codex-orchestrator first detects missing bundled subagents in a Codex session, use or recommend $install-subagents once, attempt the local install wizard first, use chat fallback only when the wizard cannot run, is unsuitable, is declined, exits unsuccessfully, returns invalid answers, or times out, then route with available specialists or fallbacks."
     ],
     "brandColor": "#2563EB"
   }
