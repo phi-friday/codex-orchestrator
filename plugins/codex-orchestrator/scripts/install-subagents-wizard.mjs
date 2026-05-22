@@ -977,7 +977,7 @@ async function main() {
   const options = parseWizardOptions(process.argv.slice(2));
 
   if (options.help) {
-    process.stdout.write(USAGE);
+    console.info(USAGE.trimEnd());
     return;
   }
 
@@ -985,13 +985,13 @@ async function main() {
   const server = await listenWizard(session, options);
   const timeout_ms = options.timeout_ms ?? DEFAULT_TIMEOUT_MS;
 
-  process.stdout.write(`wizard url ${session.url}\n`);
-  process.stdout.write(`answers path ${session.answers_path}\n`);
+  console.info(`wizard url ${session.url}`);
+  console.info(`answers path ${session.answers_path}`);
 
   try {
     const answers = await waitForAnswersFile(session.answers_path, timeout_ms);
 
-    process.stdout.write(`submitted answers ${session.answers_path}\n${answers}`);
+    console.info(`submitted answers ${session.answers_path}\n${answers.trimEnd()}`);
   } finally {
     await closeWizardServer(server);
   }
@@ -1023,7 +1023,7 @@ if (isMainModule(import.meta.url, process.argv[1])) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
-    process.stderr.write(`install-subagents-wizard: ${message}\n${USAGE}`);
+    console.error(`install-subagents-wizard: ${message}\n${USAGE.trimEnd()}`);
     process.exitCode = 1;
   }
 }

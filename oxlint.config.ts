@@ -104,6 +104,7 @@ const config: OxlintConfig = defineConfig({
     "eslint/no-void": "off",
     "eslint/no-use-before-define": "off",
     "eslint/no-promise-executor-return": "off",
+    "eslint/no-console": "off",
     // typescript
     // oxlint-disable-next-line unicorn/no-useless-spread
     ...{
@@ -173,11 +174,16 @@ const config: OxlintConfig = defineConfig({
     {
       files: ["src/**", "oxlint.config.*", "oxfmt.config.*"],
       rules: {
-        "eslint/no-console": "off",
         "no-process-env": "off",
         "no-process-exit": "off",
         "no-default-export": "off",
         "import/no-relative-parent-imports": "off",
+      },
+    },
+    {
+      files: ["plugins/codex-orchestrator/hooks/**"],
+      rules: {
+        "eslint/no-console": "error",
       },
     },
   ],

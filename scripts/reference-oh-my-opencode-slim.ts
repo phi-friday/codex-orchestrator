@@ -239,7 +239,7 @@ export async function fetchReferencePackage(options: ReferenceCliOptions): Promi
     await rm(reference_dir, { recursive: true, force: true });
     await copyReferenceEntries(clone_dir, reference_dir);
     await writeThirdPartyNotice(reference_dir, options.reference_dir);
-    process.stdout.write(`Fetched reference ${reference_spec} to ${reference_dir}\n`);
+    console.info(`Fetched reference ${reference_spec} to ${reference_dir}`);
   } finally {
     await rm(temp_dir, { recursive: true, force: true });
   }
@@ -250,7 +250,7 @@ async function main(): Promise<void> {
     const parsed_options = parseReferenceCliArgs(Bun.argv.slice(2));
 
     if (parsed_options.help) {
-      process.stdout.write(`${getUsage()}\n`);
+      console.info(getUsage());
       return;
     }
 
@@ -260,7 +260,7 @@ async function main(): Promise<void> {
     await fetchReferencePackage(options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`reference-oh-my-opencode-slim: ${message}\n\n${getUsage()}\n`);
+    console.error(`reference-oh-my-opencode-slim: ${message}\n\n${getUsage()}`);
     process.exitCode = 1;
   }
 }

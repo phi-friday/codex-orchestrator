@@ -26,15 +26,17 @@ Codex hook entrypoints SHALL use direct stream writes for machine-readable hook 
 - **THEN** the diagnostic is written directly to stderr
 
 ### Requirement: CLI output uses severity-specific console methods
-Non-hook CLI scripts SHALL use severity-specific console methods for user-facing output instead of direct stdout or stderr stream writes.
+Non-hook CLI scripts SHALL use severity-specific console methods for user-facing output instead of direct stdout or stderr writes through streams or file descriptors, including `process.stdout.write`, `process.stderr.write`, imported `stdout.write` / `stderr.write` calls, and fd-based writes such as `writeSync(1, ...)` or `writeSync(2, ...)`.
 
 #### Scenario: CLI emits normal status
 - **WHEN** a non-hook CLI script emits normal status or usage output
 - **THEN** it uses `console.info`
+- **AND** it does not write directly to stdout through a stream or file descriptor
 
 #### Scenario: CLI emits an error
 - **WHEN** a non-hook CLI script emits an error message
 - **THEN** it uses `console.error`
+- **AND** it does not write directly to stderr through a stream or file descriptor
 
 #### Scenario: CLI emits warning or diagnostic output
 - **WHEN** a non-hook CLI script emits warning or diagnostic output

@@ -13,7 +13,7 @@ The repository verification suite SHALL cover the console output lint policy and
 
 #### Scenario: Non-hook stream writes are absent
 - **WHEN** repository verification runs
-- **THEN** it MUST verify that non-hook project scripts do not use direct `process.stdout.write` or `process.stderr.write` for user-facing output
+- **THEN** it MUST verify that non-hook project scripts do not use direct stdout or stderr writes for user-facing output, including `process.stdout.write`, `process.stderr.write`, imported `stdout.write` / `stderr.write`, `writeSync(1, ...)`, and `writeSync(2, ...)`
 
 #### Scenario: Generic console log is absent
 - **WHEN** repository verification runs

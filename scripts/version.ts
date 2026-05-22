@@ -316,7 +316,7 @@ async function main(): Promise<void> {
         throw new Error(`Generated files are out of date: ${result.drift_paths.join(", ")}`);
       }
 
-      process.stdout.write("Version-generated files are up to date.\n");
+      console.info("Version-generated files are up to date.");
       return;
     }
 
@@ -327,10 +327,10 @@ async function main(): Promise<void> {
     }
 
     const result = await bumpVersionFiles(target, repo_root);
-    process.stdout.write(`Updated plugin version ${result.from_version} -> ${result.to_version}\n`);
+    console.info(`Updated plugin version ${result.from_version} -> ${result.to_version}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`version: ${message}\n\n${getUsage()}\n`);
+    console.error(`version: ${message}\n\n${getUsage()}`);
     process.exitCode = 1;
   }
 }

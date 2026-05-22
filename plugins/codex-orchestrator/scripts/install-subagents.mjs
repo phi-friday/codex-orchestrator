@@ -1,5 +1,4 @@
 // @ts-check
-import { writeSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
@@ -77,22 +76,6 @@ function expandHome(path) {
   }
 
   return path;
-}
-
-/**
- * @param {string} text
- * @returns {void}
- */
-function writeStdout(text) {
-  writeSync(1, text);
-}
-
-/**
- * @param {string} text
- * @returns {void}
- */
-function writeStderr(text) {
-  writeSync(2, text);
 }
 
 /**
@@ -424,7 +407,7 @@ async function readTargetState(file_path) {
 function warnUnknownAgents(agents, template_names) {
   for (const agent_name of Object.keys(agents).sort()) {
     if (!template_names.has(agent_name)) {
-      writeStderr(`install-subagents: warning: unknown bundled subagent ${agent_name}\n`);
+      console.warn(`install-subagents: warning: unknown bundled subagent ${agent_name}`);
     }
   }
 }
@@ -455,13 +438,13 @@ async function installSubagents(options) {
   }
 
   if (options.dry_run) {
-    writeStdout(formatDryRunOutput(plan));
+    console.info(formatDryRunOutput(plan).slice(0, -1));
     return;
   }
 
   await writePlannedSubagents(plan.planned_writes);
   await removePlannedSubagents(plan.planned_removals);
-  writeStdout(formatInstallOutput(plan));
+  console.info(formatInstallOutput(plan).slice(0, -1));
 }
 
 /**
@@ -639,7 +622,7 @@ async function main() {
   const options = parseOptions(process.argv.slice(2));
 
   if (options.help) {
-    writeStdout(USAGE);
+    console.info(USAGE.trimEnd());
     return;
   }
 
@@ -678,7 +661,7 @@ if (isMainModule(import.meta.url, process.argv[1])) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
-    writeStderr(`install-subagents: ${message}\n${USAGE}`);
+    console.error(`install-subagents: ${message}\n${USAGE.trimEnd()}`);
     process.exitCode = 1;
   }
 }
